@@ -1,0 +1,6 @@
+streamlit
+mlx-lm
+transformers
+sentencepiece
+torch
+sacrebleu
