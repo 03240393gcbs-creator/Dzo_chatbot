@@ -1,0 +1,4 @@
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say no in Dzongkha?"}, {"role": "assistant", "content": "མེན།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say Wednesday in Dzongkha?"}, {"role": "assistant", "content": "གཟའ་ལྷག་པ།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say Friday in Dzongkha?"}, {"role": "assistant", "content": "གཟའ་པ་སངས།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say Saturday in Dzongkha?"}, {"role": "assistant", "content": "གཟའ་སྤེན་པ།"}]}

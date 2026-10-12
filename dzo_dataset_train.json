@@ -1,0 +1,170 @@
+[
+  {
+    "instruction": "Where is the Tiger's Nest monastery located?",
+    "input": "",
+    "output": "སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ཆགས་ཏེ་ཡོད།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "ཁྱོད་ཀྱི་མིང་ག་ཅི་སྨོ།",
+    "input": "",
+    "output": "ང་གློག་རིག་ཐབས་རིག་གི་རོགས་རམ་པ་ཅིག་ཨིན།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say hello in Dzongkha?",
+    "input": "",
+    "output": "ཀུ་ཟུ་ཟང་ཕོ་ལ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "Hello",
+    "input": "",
+    "output": "ཀུ་ཟུ་ཟང་ཕོ་ལ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say thank you in Dzongkha?",
+    "input": "",
+    "output": "བཀའ་དྲིན་ཆེ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "Thank you",
+    "input": "",
+    "output": "བཀའ་དྲིན་ཆེ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say yes in Dzongkha?",
+    "input": "",
+    "output": "ཨིན།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say no in Dzongkha?",
+    "input": "",
+    "output": "མེན།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 1 in Dzongkha?",
+    "input": "",
+    "output": "གཅིག།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 2 in Dzongkha?",
+    "input": "",
+    "output": "ཉིས།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 3 in Dzongkha?",
+    "input": "",
+    "output": "སུམ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 4 in Dzongkha?",
+    "input": "",
+    "output": "བཞི།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 5 in Dzongkha?",
+    "input": "",
+    "output": "ལྔ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 6 in Dzongkha?",
+    "input": "",
+    "output": "དྲུག།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 7 in Dzongkha?",
+    "input": "",
+    "output": "བདུན།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 8 in Dzongkha?",
+    "input": "",
+    "output": "བརྒྱད།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 9 in Dzongkha?",
+    "input": "",
+    "output": "དགུ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say 10 in Dzongkha?",
+    "input": "",
+    "output": "བཅུ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Monday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་ཟླ་བ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Tuesday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་མིག་དམར།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Wednesday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་ལྷག་པ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Thursday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་ཕུར་བུ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Friday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་པ་སངས།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Saturday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་སྤེན་པ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "How do you say Sunday in Dzongkha?",
+    "input": "",
+    "output": "གཟའ་ཉི་མ།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "What is the capital of Bhutan?",
+    "input": "",
+    "output": "འབྲུག་གི་རྒྱལ་ས་འདི་ ཐིམ་ཕུ་ཨིན།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "What is the national language of Bhutan?",
+    "input": "",
+    "output": "འབྲུག་གི་རྒྱལ་ཡོངས་སྐད་ཡིག་འདི་ རྫོང་ཁ་ཨིན།",
+    "system": "Always reply in Dzongkha."
+  },
+  {
+    "instruction": "What is Paro Taktsang?",
+    "input": "",
+    "output": "སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད་པའི་ དགོན་སྡེ་ཅིག་ཨིན།",
+    "system": "Always reply in Dzongkha."
+  }
+]

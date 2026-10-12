@@ -1,0 +1,29 @@
+instruction,input,output,system,category,confidence,source
+Where is the Tiger's Nest monastery located?,,སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ཆགས་ཏེ་ཡོད།,Always reply in Dzongkha.,bhutan,user,your dataset.json
+ཁྱོད་ཀྱི་མིང་ག་ཅི་སྨོ།,,ང་གློག་རིག་ཐབས་རིག་གི་རོགས་རམ་པ་ཅིག་ཨིན།,Always reply in Dzongkha.,chat,user,your dataset.json
+How do you say hello in Dzongkha?,,ཀུ་ཟུ་ཟང་ཕོ་ལ།,Always reply in Dzongkha.,greeting,high,written by Claude
+Hello,,ཀུ་ཟུ་ཟང་ཕོ་ལ།,Always reply in Dzongkha.,greeting,high,written by Claude
+How do you say thank you in Dzongkha?,,བཀའ་དྲིན་ཆེ།,Always reply in Dzongkha.,greeting,high,written by Claude
+Thank you,,བཀའ་དྲིན་ཆེ།,Always reply in Dzongkha.,greeting,high,written by Claude
+How do you say yes in Dzongkha?,,ཨིན།,Always reply in Dzongkha.,basics,high,written by Claude
+How do you say no in Dzongkha?,,མེན།,Always reply in Dzongkha.,basics,high,written by Claude
+How do you say 1 in Dzongkha?,,གཅིག།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 2 in Dzongkha?,,ཉིས།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 3 in Dzongkha?,,སུམ།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 4 in Dzongkha?,,བཞི།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 5 in Dzongkha?,,ལྔ།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 6 in Dzongkha?,,དྲུག།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 7 in Dzongkha?,,བདུན།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 8 in Dzongkha?,,བརྒྱད།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 9 in Dzongkha?,,དགུ།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say 10 in Dzongkha?,,བཅུ།,Always reply in Dzongkha.,numbers,high,written by Claude
+How do you say Monday in Dzongkha?,,གཟའ་ཟླ་བ།,Always reply in Dzongkha.,days,high,written by Claude
+How do you say Tuesday in Dzongkha?,,གཟའ་མིག་དམར།,Always reply in Dzongkha.,days,high,written by Claude
+How do you say Wednesday in Dzongkha?,,གཟའ་ལྷག་པ།,Always reply in Dzongkha.,days,high,written by Claude
+How do you say Thursday in Dzongkha?,,གཟའ་ཕུར་བུ།,Always reply in Dzongkha.,days,high,written by Claude
+How do you say Friday in Dzongkha?,,གཟའ་པ་སངས།,Always reply in Dzongkha.,days,high,written by Claude
+How do you say Saturday in Dzongkha?,,གཟའ་སྤེན་པ།,Always reply in Dzongkha.,days,high,written by Claude
+How do you say Sunday in Dzongkha?,,གཟའ་ཉི་མ།,Always reply in Dzongkha.,days,high,written by Claude
+What is the capital of Bhutan?,,འབྲུག་གི་རྒྱལ་ས་འདི་ ཐིམ་ཕུ་ཨིན།,Always reply in Dzongkha.,bhutan,medium,written by Claude
+What is the national language of Bhutan?,,འབྲུག་གི་རྒྱལ་ཡོངས་སྐད་ཡིག་འདི་ རྫོང་ཁ་ཨིན།,Always reply in Dzongkha.,bhutan,medium,written by Claude
+What is Paro Taktsang?,,སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད་པའི་ དགོན་སྡེ་ཅིག་ཨིན།,Always reply in Dzongkha.,bhutan,medium,written by Claude
