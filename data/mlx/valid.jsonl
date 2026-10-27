@@ -1,4 +1,6 @@
-{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say no in Dzongkha?"}, {"role": "assistant", "content": "མེན།"}]}
-{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say Wednesday in Dzongkha?"}, {"role": "assistant", "content": "གཟའ་ལྷག་པ།"}]}
-{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say Friday in Dzongkha?"}, {"role": "assistant", "content": "གཟའ་པ་སངས།"}]}
-{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "How do you say Saturday in Dzongkha?"}, {"role": "assistant", "content": "གཟའ་སྤེན་པ།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "6 in dzongkha"}, {"role": "assistant", "content": "དྲུག།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "thursday in dzongkha"}, {"role": "assistant", "content": "གཟའ་ཕུར་བུ།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "where is the tiger's nest monastery located"}, {"role": "assistant", "content": "སྤ་རོ་སྟག་ཚང་ནི་སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "tuesday"}, {"role": "assistant", "content": "གཟའ་མིག་དམར།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "how do you say 7 in dzongkha"}, {"role": "assistant", "content": "བདུན།"}]}
+{"messages": [{"role": "system", "content": "Always reply in Dzongkha."}, {"role": "user", "content": "how do you say tuesday in dzongkha"}, {"role": "assistant", "content": "གཟའ་མིག་དམར།"}]}

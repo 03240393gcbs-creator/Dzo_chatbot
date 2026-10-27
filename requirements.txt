@@ -1,6 +1,7 @@
 streamlit
-mlx-lm
+mlx-lm; sys_platform == "darwin"
 transformers
 sentencepiece
 torch
 sacrebleu
+pytest

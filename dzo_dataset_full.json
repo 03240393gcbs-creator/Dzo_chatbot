@@ -2,7 +2,7 @@
   {
     "instruction": "Where is the Tiger's Nest monastery located?",
     "input": "",
-    "output": "སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ཆགས་ཏེ་ཡོད།",
+    "output": "སྤ་རོ་སྟག་ཚང་ནི་སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད།",
     "system": "Always reply in Dzongkha.",
     "category": "bhutan",
     "confidence": "user",
@@ -20,7 +20,7 @@
   {
     "instruction": "How do you say hello in Dzongkha?",
     "input": "",
-    "output": "ཀུ་ཟུ་ཟང་ཕོ་ལ།",
+    "output": "ཀུ་ཟུ་ཟང་པོ་ལ།",
     "system": "Always reply in Dzongkha.",
     "category": "greeting",
     "confidence": "high",
@@ -29,7 +29,7 @@
   {
     "instruction": "Hello",
     "input": "",
-    "output": "ཀུ་ཟུ་ཟང་ཕོ་ལ།",
+    "output": "ཀུ་ཟུ་ཟང་པོ་ལ།",
     "system": "Always reply in Dzongkha.",
     "category": "greeting",
     "confidence": "high",
@@ -83,7 +83,7 @@
   {
     "instruction": "How do you say 2 in Dzongkha?",
     "input": "",
-    "output": "ཉིས།",
+    "output": "གཉིས།",
     "system": "Always reply in Dzongkha.",
     "category": "numbers",
     "confidence": "high",
@@ -92,7 +92,7 @@
   {
     "instruction": "How do you say 3 in Dzongkha?",
     "input": "",
-    "output": "སུམ།",
+    "output": "གསུམ།",
     "system": "Always reply in Dzongkha.",
     "category": "numbers",
     "confidence": "high",
@@ -227,7 +227,7 @@
   {
     "instruction": "What is the capital of Bhutan?",
     "input": "",
-    "output": "འབྲུག་གི་རྒྱལ་ས་འདི་ ཐིམ་ཕུ་ཨིན།",
+    "output": "འབྲུག་གི་རྒྱལ་ས་ནི་ཐིམ་ཕུ་ཨིན།",
     "system": "Always reply in Dzongkha.",
     "category": "bhutan",
     "confidence": "medium",
@@ -236,7 +236,7 @@
   {
     "instruction": "What is the national language of Bhutan?",
     "input": "",
-    "output": "འབྲུག་གི་རྒྱལ་ཡོངས་སྐད་ཡིག་འདི་ རྫོང་ཁ་ཨིན།",
+    "output": "འབྲུག་གི་རྒྱལ་ཡོངས་སྐད་ཡིག་ནི་རྫོང་ཁ་ཨིན།",
     "system": "Always reply in Dzongkha.",
     "category": "bhutan",
     "confidence": "medium",
@@ -245,7 +245,7 @@
   {
     "instruction": "What is Paro Taktsang?",
     "input": "",
-    "output": "སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད་པའི་ དགོན་སྡེ་ཅིག་ཨིན།",
+    "output": "སྤ་རོ་སྟག་ཚང་ནི་སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད་པའི་དགོན་སྡེ་ཅིག་ཨིན།",
     "system": "Always reply in Dzongkha.",
     "category": "bhutan",
     "confidence": "medium",

@@ -1,4 +1,12 @@
 venv/
 __pycache__/
-models/
+*.pyc
+.pytest_cache/
 .DS_Store
+*.bak
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.bak

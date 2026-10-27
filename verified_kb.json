@@ -1,0 +1,278 @@
+[
+  {
+    "category": "greeting",
+    "questions": [
+      "hello",
+      "hi",
+      "hi there",
+      "hey",
+      "hello!",
+      "how do you say hello in dzongkha",
+      "ཀུ་ཟུ་ཟང་པོ་ལ"
+    ],
+    "dz_answer": "ཀུ་ཟུ་ཟང་པོ་ལ།",
+    "status": "from_dataset",
+    "note": "Spelling taken from your original dataset.json (པོ); the later file used ཕོ."
+  },
+  {
+    "category": "greeting",
+    "questions": [
+      "thank you",
+      "thanks",
+      "how do you say thank you in dzongkha"
+    ],
+    "dz_answer": "བཀའ་དྲིན་ཆེ།",
+    "status": "from_dataset",
+    "note": "Dzongkha form; your original dataset.json used the Tibetan form ཐུགས་རྗེ་ཆེ."
+  },
+  {
+    "category": "basics",
+    "questions": [
+      "how do you say yes in dzongkha",
+      "yes in dzongkha"
+    ],
+    "dz_answer": "ཨིན།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "basics",
+    "questions": [
+      "how do you say no in dzongkha",
+      "no in dzongkha"
+    ],
+    "dz_answer": "མེན།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "chat",
+    "questions": [
+      "ཁྱོད་ཀྱི་མིང་ག་ཅི་སྨོ",
+      "what is your name",
+      "who are you"
+    ],
+    "dz_answer": "ང་གློག་རིག་ཐབས་རིག་གི་རོགས་རམ་པ་ཅིག་ཨིན།",
+    "status": "needs_review",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 1 in dzongkha",
+      "1 in dzongkha"
+    ],
+    "dz_answer": "གཅིག།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 2 in dzongkha",
+      "2 in dzongkha"
+    ],
+    "dz_answer": "གཉིས།",
+    "status": "from_dataset",
+    "note": "Your old data had ཉིས/སུམ for 2/3; correct spellings are གཉིས/གསུམ."
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 3 in dzongkha",
+      "3 in dzongkha"
+    ],
+    "dz_answer": "གསུམ།",
+    "status": "from_dataset",
+    "note": "Your old data had ཉིས/སུམ for 2/3; correct spellings are གཉིས/གསུམ."
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 4 in dzongkha",
+      "4 in dzongkha"
+    ],
+    "dz_answer": "བཞི།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 5 in dzongkha",
+      "5 in dzongkha"
+    ],
+    "dz_answer": "ལྔ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 6 in dzongkha",
+      "6 in dzongkha"
+    ],
+    "dz_answer": "དྲུག།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 7 in dzongkha",
+      "7 in dzongkha"
+    ],
+    "dz_answer": "བདུན།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 8 in dzongkha",
+      "8 in dzongkha"
+    ],
+    "dz_answer": "བརྒྱད།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 9 in dzongkha",
+      "9 in dzongkha"
+    ],
+    "dz_answer": "དགུ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "numbers",
+    "questions": [
+      "how do you say 10 in dzongkha",
+      "10 in dzongkha"
+    ],
+    "dz_answer": "བཅུ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say monday in dzongkha",
+      "monday in dzongkha",
+      "monday"
+    ],
+    "dz_answer": "གཟའ་ཟླ་བ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say tuesday in dzongkha",
+      "tuesday in dzongkha",
+      "tuesday"
+    ],
+    "dz_answer": "གཟའ་མིག་དམར།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say wednesday in dzongkha",
+      "wednesday in dzongkha",
+      "wednesday"
+    ],
+    "dz_answer": "གཟའ་ལྷག་པ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say thursday in dzongkha",
+      "thursday in dzongkha",
+      "thursday"
+    ],
+    "dz_answer": "གཟའ་ཕུར་བུ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say friday in dzongkha",
+      "friday in dzongkha",
+      "friday"
+    ],
+    "dz_answer": "གཟའ་པ་སངས།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say saturday in dzongkha",
+      "saturday in dzongkha",
+      "saturday"
+    ],
+    "dz_answer": "གཟའ་སྤེན་པ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "days",
+    "questions": [
+      "how do you say sunday in dzongkha",
+      "sunday in dzongkha",
+      "sunday"
+    ],
+    "dz_answer": "གཟའ་ཉི་མ།",
+    "status": "from_dataset",
+    "note": ""
+  },
+  {
+    "category": "bhutan",
+    "questions": [
+      "what is the capital of bhutan",
+      "capital of bhutan"
+    ],
+    "dz_answer": "འབྲུག་གི་རྒྱལ་ས་ནི་ཐིམ་ཕུ་ཨིན།",
+    "status": "needs_review",
+    "note": "Removed the stray space and used ནི as topic marker; confirm wording with a Dzongkha speaker."
+  },
+  {
+    "category": "bhutan",
+    "questions": [
+      "what is the national language of bhutan",
+      "national language of bhutan"
+    ],
+    "dz_answer": "འབྲུག་གི་རྒྱལ་ཡོངས་སྐད་ཡིག་ནི་རྫོང་ཁ་ཨིན།",
+    "status": "needs_review",
+    "note": ""
+  },
+  {
+    "category": "bhutan",
+    "questions": [
+      "what is paro taktsang",
+      "what is tiger's nest",
+      "tiger nest monastery"
+    ],
+    "dz_answer": "སྤ་རོ་སྟག་ཚང་ནི་སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད་པའི་དགོན་སྡེ་ཅིག་ཨིན།",
+    "status": "needs_review",
+    "note": ""
+  },
+  {
+    "category": "bhutan",
+    "questions": [
+      "where is the tiger's nest monastery located",
+      "where is paro taktsang",
+      "where is tiger's nest"
+    ],
+    "dz_answer": "སྤ་རོ་སྟག་ཚང་ནི་སྤ་རོ་རྫོང་ཁག་ནང་ལུ་ཡོད།",
+    "status": "needs_review",
+    "note": "Original used ནང་ཆགས་ཏེ་ཡོད; Dzongkha uses the locative ནང་ལུ་ཡོད."
+  }
+]
