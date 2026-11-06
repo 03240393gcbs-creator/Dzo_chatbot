@@ -8,7 +8,7 @@ Modes
 
 Run from the project folder:
     pip install transformers sentencepiece torch
-    streamlit run app.py
+    streamlit run dzongkha_app_v3.py
 """
 import re
 from pathlib import Path
@@ -189,16 +189,34 @@ def predict_next_words(text, k=5):
 import base64
 import html as _html
 import json
+import time
+import uuid
 
 import streamlit.components.v1 as components
 
 APP_NAME = "Dzongkha AI Assistant"
 BG_IMAGE = Path(__file__).resolve().parent / "assets" / "chatbot_bg.png"
 
-# Chat avatars (images in the assets folder; falls back to emoji if a file is missing)
+# ---- Chat avatars -------------------------------------------------------------
+# USER (person asking)  -> assets/user_avatar.png  (the smiling Bhutanese boy)
+# BOT  (assistant)      -> assets/bot_avatar.png   (the line-art character)
+# Falls back to an emoji if a file is missing.
 _ASSETS = Path(__file__).resolve().parent / "assets"
-USER_AVATAR = str(_ASSETS / "user_avatar.png") if (_ASSETS / "user_avatar.png").exists() else "🧑"
-BOT_AVATAR = str(_ASSETS / "bot_avatar.png") if (_ASSETS / "bot_avatar.png").exists() else "🐉"
+
+
+def _avatar(stem: str, fallback: str) -> str:
+    # looks in ./assets first, then next to this file
+    here = Path(__file__).resolve().parent
+    for folder in (_ASSETS, here):
+        for ext in ("png", "webp", "jpg", "jpeg"):
+            p = folder / f"{stem}.{ext}"
+            if p.exists():
+                return str(p)
+    return fallback
+
+
+USER_AVATAR = _avatar("user_avatar", "🧑")
+BOT_AVATAR = _avatar("bot_avatar", "🐉")
 
 # Fixed values that used to live in the sidebar "Settings" panel.
 MAX_TOKENS = 200
@@ -269,11 +287,18 @@ html, body, [class*="css"], .stApp { font-family:'Manrope',system-ui,sans-serif;
   background: url("__BG__") var(--sbw) 0 / auto 100vh no-repeat fixed, var(--cream);
 }
 /* when the sidebar is collapsed the band moves to the left edge */
-.stApp:has(section[data-testid="stSidebar"][aria-expanded="false"]) {
+.stApp:has(section[data-testid="stSidebar"][aria-expanded="false"]),
+.stApp:has([data-testid="stExpandSidebarButton"]),
+.stApp:has([data-testid="stSidebarCollapsedControl"]) {
   background-position: 0 0, 0 0;
 }
 header[data-testid="stHeader"] { background:transparent; }
-[data-testid="stToolbar"], #MainMenu, footer { display:none !important; }
+[data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stDeployButton"],
+#MainMenu, footer { display:none !important; }
+/* keep the "open sidebar" arrow visible so the mode menu can always be reopened */
+[data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="stSidebarCollapseButton"] { display:flex !important; visibility:visible !important; opacity:1 !important; }
+[data-testid="stExpandSidebarButton"] svg, [data-testid="stSidebarCollapsedControl"] svg { color:var(--red-dark); }
 [data-testid="stBottom"], [data-testid="stBottom"] > div { background:transparent !important; }
 
 /* content sits to the right of the ornament band */
@@ -315,6 +340,9 @@ div[data-testid="stButton"] > button[kind="primary"]:hover { box-shadow:0 3px 18
     border-radius:18px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 10px rgba(120,60,20,.08); }
 [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
 [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) { background:var(--user); }
+
+/* round chat avatars (images) */
+[data-testid="stChatMessage"] img { border-radius:50%; object-fit:cover; }
 
 /* badges */
 .badge { display:inline-flex; align-items:center; gap:6px; font-size:.76rem; font-weight:600; padding:3px 10px;
@@ -499,6 +527,63 @@ def clear_summary():
     st.session_state.pop("sum_out", None)
 
 
+# ------------------------------------------------------------ chat history
+# Saved to chat_sessions.json next to this file (separate from any old chat_history.json).
+HISTORY_FILE = Path(__file__).resolve().parent / "chat_sessions.json"
+
+
+def load_sessions():
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def write_sessions(sessions):
+    try:
+        HISTORY_FILE.write_text(json.dumps(sessions, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def save_current(kind):
+    """Save the chat in the current mode ('pipe' or 'ft') to the history file."""
+    msgs = st.session_state["hist_pipe" if kind == "pipe" else "hist_ft"]
+    if not msgs:
+        return
+    idk = f"chat_id_{kind}"
+    sid = st.session_state.get(idk) or uuid.uuid4().hex[:10]
+    st.session_state[idk] = sid
+    first = next((m["content"] for m in msgs if m["role"] == "user"), "Chat")
+    rec = {"id": sid, "kind": kind, "title": first[:40], "ts": time.time(), "messages": msgs,
+           "en_hist": st.session_state.en_hist if kind == "pipe" else []}
+    sessions = [x for x in load_sessions() if x.get("id") != sid]
+    sessions.insert(0, rec)
+    write_sessions(sessions[:50])
+
+
+def open_session(sid):
+    for x in load_sessions():
+        if x.get("id") == sid:
+            if x["kind"] == "pipe":
+                st.session_state.hist_pipe = x["messages"]
+                st.session_state.en_hist = x.get("en_hist", [])
+                st.session_state["mode_radio"] = "💬  Chat"
+            else:
+                st.session_state.hist_ft = x["messages"]
+                st.session_state["mode_radio"] = "🎓  Chat (fine-tuned)"
+            st.session_state[f"chat_id_{x['kind']}"] = sid
+            return
+
+
+def delete_session(sid):
+    write_sessions([x for x in load_sessions() if x.get("id") != sid])
+    for k in ("chat_id_pipe", "chat_id_ft"):
+        if st.session_state.get(k) == sid:
+            st.session_state.pop(k)
+
+
 # -------------------------------------------------------------------- state
 for key, default in [("hist_pipe", []), ("en_hist", []), ("hist_ft", [])]:
     st.session_state.setdefault(key, default)
@@ -509,12 +594,16 @@ with st.sidebar:
     st.markdown('<div class="brand"><div class="t">Dzongkha AI</div>'
                 '<div class="s">English ⇄ རྫོང་ཁ</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="side-label">Mode</div>', unsafe_allow_html=True)
-    mode = MODES[st.radio("Mode", list(MODES), label_visibility="collapsed")]
+    mode = MODES[st.radio("Mode", list(MODES), label_visibility="collapsed", key="mode_radio")]
 
     if st.button("🗑️  New chat"):
         st.session_state.hist_pipe, st.session_state.en_hist, st.session_state.hist_ft = [], [], []
         st.session_state.pop("pending", None)
+        st.session_state.pop("chat_id_pipe", None)
+        st.session_state.pop("chat_id_ft", None)
         st.rerun()
+
+    hist_slot = st.container()   # filled at the bottom of the script so it is always up to date
 
     st.markdown('<div class="side-label">About</div>', unsafe_allow_html=True)
     st.caption("✔ Verified = answer from the hand-checked answer bank.\n\n"
@@ -543,6 +632,7 @@ if mode == "Chat (translate pipeline)":
             render_assistant(dz, source, notes, (en_q, en_a))
         st.session_state.hist_pipe.append({"role": "assistant", "content": dz, "source": source,
                                            "notes": notes, "debug": (en_q, en_a)})
+        save_current("pipe")
 
 elif mode == "Chat (fine-tuned)":
     chat_header()
@@ -562,6 +652,7 @@ elif mode == "Chat (fine-tuned)":
                 notes.insert(0, "The model did not produce clean Dzongkha.")
             render_assistant(reply, "machine", notes)
         st.session_state.hist_ft.append({"role": "assistant", "content": reply, "source": "machine", "notes": notes})
+        save_current("ft")
 
 elif mode == "Summarize":
     widen_page()
@@ -631,5 +722,16 @@ else:
                 f'<div class="bar"><i style="width:{min(100, p * 100 * 2):.0f}%"></i></div><div class="pc">{p:.1%}</div></div>'
                 for i, (w, p) in enumerate(preds, 1))
             st.markdown(f'<div class="card"><h4>Top suggestions</h4>{rows}</div>', unsafe_allow_html=True)
+
+with hist_slot:
+    st.markdown('<div class="side-label">History</div>', unsafe_allow_html=True)
+    _sessions = load_sessions()
+    if not _sessions:
+        st.caption("Your chats will be saved here.")
+    for _s in _sessions[:12]:
+        c1, c2 = st.columns([5, 1])
+        c1.button(f"{'💬' if _s['kind'] == 'pipe' else '🎓'} {_s['title']}", key=f"h_{_s['id']}",
+                  on_click=open_session, args=(_s["id"],))
+        c2.button("✕", key=f"d_{_s['id']}", on_click=delete_session, args=(_s["id"],))
 
 st.markdown('<div class="foot">Dzongkha AI Assistant · NLP module project</div>', unsafe_allow_html=True)

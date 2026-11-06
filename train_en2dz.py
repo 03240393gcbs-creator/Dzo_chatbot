@@ -12,13 +12,18 @@ Check your data first (no training, no big downloads):
 Training a 600M model is heavy. Use a free Google Colab GPU, or on a MacBook Air
 use a small --max-pairs (e.g. 5000) and --batch-size 4 as a test run.
 """
+<<<<<<< HEAD
 import argparse, csv, json, random, re, sys
+=======
+import argparse, csv, random, re, sys
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
 
 TIB = re.compile(r"[\u0F00-\u0FFF]")
 
 
 def read_pairs(a):
     pairs = []
+<<<<<<< HEAD
     if a.jsonl:
         with open(a.jsonl, encoding="utf-8") as f:
             for line in f:
@@ -28,6 +33,9 @@ def read_pairs(a):
                 pairs.append((row.get("english", row.get("en", "")),
                               row.get("dzongkha", row.get("dz", ""))))
     elif a.table:
+=======
+    if a.table:
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
         delim = "\t" if a.table.endswith((".tsv", ".txt")) else ","
         with open(a.table, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f, delimiter=delim):
@@ -39,7 +47,11 @@ def read_pairs(a):
             sys.exit(f"Line counts differ: {len(en)} English vs {len(dz)} Dzongkha. Files are not aligned.")
         pairs = list(zip(en, dz))
     else:
+<<<<<<< HEAD
         sys.exit("Give --table, --jsonl, or both --en-file and --dz-file.")
+=======
+        sys.exit("Give --table, or both --en-file and --dz-file.")
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
     return pairs
 
 
@@ -63,7 +75,11 @@ def clean(pairs, max_chars=300):
 
 def main():
     p = argparse.ArgumentParser()
+<<<<<<< HEAD
     p.add_argument("--table"); p.add_argument("--jsonl", help="JSONL with english/dzongkha fields"); p.add_argument("--en-col", default="english"); p.add_argument("--dz-col", default="dzongkha")
+=======
+    p.add_argument("--table"); p.add_argument("--en-col", default="english"); p.add_argument("--dz-col", default="dzongkha")
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
     p.add_argument("--en-file"); p.add_argument("--dz-file")
     p.add_argument("--base", default="facebook/nllb-200-distilled-600M")
     p.add_argument("--out", default="./models/nllb-en2dz")

@@ -6,7 +6,11 @@ SYSTEM = "Always reply in Dzongkha."
 
 rows = json.load(open(SRC, encoding="utf-8"))
 
+<<<<<<< HEAD
 HELLO = "ཀུ་ཟུ་ཟང་པོ་ལ།"
+=======
+HELLO = "ཀུ་ཟུ་ཟང་ཕོ་ལ།"
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
 for q in ["hello", "Hello", "hello!", "hi", "Hi", "hi there", "hey", "Hello, how are you?"]:
     rows.append({"instruction": q, "input": "", "output": HELLO, "system": SYSTEM})
 

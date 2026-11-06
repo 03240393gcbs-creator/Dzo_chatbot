@@ -19,14 +19,24 @@ def test_foreign_text_and_digits():
 
 
 def test_wrong_spellings_fixed():
+<<<<<<< HEAD
     assert apply_variant_fixes("གཉིས།")[0] == "གཉིས།"
     assert apply_variant_fixes("གསུམ།")[0] == "གསུམ།"
+=======
+    assert apply_variant_fixes("ཉིས།")[0] == "གཉིས།"
+    assert apply_variant_fixes("སུམ།")[0] == "གསུམ།"
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
     assert analyse("འདི་ཡིན།").fixed == "འདི་ཨིན།"
 
 
 def test_no_change_inside_longer_syllable():
+<<<<<<< HEAD
     assert apply_variant_fixes("གསུམ་ཅུ།")[0].startswith("གསུམ") is True   # whole syllable only
     assert apply_variant_fixes("གསུམུ།")[0] == "གསུམུ།"
+=======
+    assert apply_variant_fixes("སུམ་ཅུ།")[0].startswith("གསུམ") is True   # whole syllable only
+    assert apply_variant_fixes("སུམུ།")[0] == "སུམུ།"
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
 
 
 def test_locative_rule():
@@ -60,6 +70,7 @@ def test_bank_lookup():
 def test_lexicon_suggests():
     lex = Lexicon(); bank.build_lexicon(lex)
     assert "གསུམ" in lex.suggest("གསུམས") or lex.suggest("གསུམས") == []
+<<<<<<< HEAD
 
 
 def test_hello_and_thank_you_exact_spelling():
@@ -69,3 +80,5 @@ def test_hello_and_thank_you_exact_spelling():
 
 def test_old_wrong_hello_spelling_is_not_returned():
     assert bank.lookup("hello")[0]["dz_answer"] != "ཀུ་ཟུ་ཟང་ཕོ་ལ།"
+=======
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24

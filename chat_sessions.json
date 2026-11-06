@@ -1,0 +1,39 @@
+[
+ {
+  "id": "a9e2acde93",
+  "kind": "pipe",
+  "title": "hello",
+  "ts": 1793961347.681033,
+  "messages": [
+   {
+    "role": "user",
+    "content": "hello"
+   },
+   {
+    "role": "assistant",
+    "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "hello",
+     "(verified answer bank)"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "capital of Bhutan"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་གི་རྒྱལ་ས་ནི་ཐིམ་ཕུ་ཨིན།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "capital of Bhutan",
+     "(verified answer bank)"
+    ]
+   }
+  ],
+  "en_hist": []
+ }
+]

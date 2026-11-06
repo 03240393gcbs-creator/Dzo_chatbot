@@ -3,15 +3,25 @@ S = "Always reply in Dzongkha."
 pairs = [
  ("Where is the Tiger's Nest monastery located?", "སྤ་རོ་སྟག་ཚང་འདི་ སྤ་རོ་རྫོང་ཁག་ནང་ཆགས་ཏེ་ཡོད།"),
  ("ཁྱོད་ཀྱི་མིང་ག་ཅི་སྨོ།", "ང་གློག་རིག་ཐབས་རིག་གི་རོགས་རམ་པ་ཅིག་ཨིན།"),
+<<<<<<< HEAD
  ("How do you say hello in Dzongkha?", "ཀུ་ཟུ་ཟང་པོ་ལ།"),
  ("Hello", "ཀུ་ཟུ་ཟང་པོ་ལ།"),
+=======
+ ("How do you say hello in Dzongkha?", "ཀུ་ཟུ་ཟང་ཕོ་ལ།"),
+ ("Hello", "ཀུ་ཟུ་ཟང་ཕོ་ལ།"),
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
  ("How do you say thank you in Dzongkha?", "བཀའ་དྲིན་ཆེ།"),
  ("Thank you", "བཀའ་དྲིན་ཆེ།"),
  ("How do you say yes in Dzongkha?", "ཨིན།"),
  ("How do you say no in Dzongkha?", "མེན།"),
  ("How do you say 1 in Dzongkha?", "གཅིག།"),
+<<<<<<< HEAD
  ("How do you say 2 in Dzongkha?", "གཉིས།"),
  ("How do you say 3 in Dzongkha?", "གསུམ།"),
+=======
+ ("How do you say 2 in Dzongkha?", "ཉིས།"),
+ ("How do you say 3 in Dzongkha?", "སུམ།"),
+>>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
  ("How do you say 4 in Dzongkha?", "བཞི།"),
  ("How do you say 5 in Dzongkha?", "ལྔ།"),
  ("How do you say 6 in Dzongkha?", "དྲུག།"),
