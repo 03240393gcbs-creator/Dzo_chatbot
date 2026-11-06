@@ -1,0 +1,635 @@
+"""Dzongkha chatbot v3 (verified answers + Dzongkha spell/structure checking): ask in English or Dzongkha, answered in Dzongkha.
+
+Modes
+  Chat (translate pipeline): Dzongkha->English, answer in English, English->Dzongkha
+  Chat (fine-tuned)        : your LoRA model (only knows what is in your small dataset)
+  Summarize                : summary written in English, then translated to Dzongkha
+  Next word                : GPT-2 next-word suggestions
+
+Run from the project folder:
+    pip install transformers sentencepiece torch
+    streamlit run app.py
+"""
+import re
+from pathlib import Path
+import streamlit as st
+
+from dzongkha_nlp import AnswerBank, Lexicon, analyse, normalize
+from govtech_dnlp import segment_dzongkha
+
+BASE_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+ADAPTER_PATH = "./data/adapters"
+NEXTWORD_REPO = "KarmaCST/dzongkha_nextword_gpt2"
+
+DZ_TO_EN = "KarmaCST/nllb-200-distilled-600M-dz-to-en"
+EN_TO_DZ_OPTIONS = {
+    "KarmaCST en->dz (73K)": "KarmaCST/nllb-200-distilled-600M-73K-en-to-dz",
+    "KarmaCST en->dz": "KarmaCST/nllb-200-distilled-600M-en-to-dz",
+    "Meta NLLB-200 base": "facebook/nllb-200-distilled-600M",
+    "My fine-tuned (./models/nllb-en2dz)": "./models/nllb-en2dz",
+}
+DZ, EN = "dzo_Tibt", "eng_Latn"
+
+SYSTEM = "Always reply in Dzongkha."
+SUMMARY_SYSTEM = "Always reply in Dzongkha. Summarize the text the user gives you briefly in Dzongkha."
+RETRY_SYSTEM = ("You must answer ONLY in Dzongkha, written in Tibetan script. "
+                "Do not use English or Chinese.")
+EN_SYSTEM = ("You are a helpful assistant. Answer in at most 3 short, simple English sentences. "
+             "No lists, no markdown, no emojis.")
+EN_SUMMARY_SYSTEM = "Summarize the user's text in 2 short, simple English sentences. No lists, no markdown."
+
+TIBETAN = re.compile(r"[\u0F00-\u0FFF]")
+LETTERS = re.compile(r"[A-Za-z\u4e00-\u9fff\u0F00-\u0FFF]")
+
+
+def dzongkha_ratio(text: str) -> float:
+    letters = LETTERS.findall(text)
+    return len(TIBETAN.findall(text)) / len(letters) if letters else 0.0
+
+
+def clean_en(text: str) -> str:
+    text = re.sub(r"[*#`_>]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def split_sentences(text: str, limit: int = 4):
+    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", clean_en(text)) if p.strip()]
+    return parts[:limit]
+
+
+# ---------------------------------------------------------------- LLM (MLX)
+@st.cache_resource(show_spinner="Loading English model...")
+def load_base():
+    from mlx_lm import load
+    return load(BASE_MODEL)
+
+
+@st.cache_resource(show_spinner="Loading fine-tuned model...")
+def load_finetuned():
+    from mlx_lm import load
+    return load(BASE_MODEL, adapter_path=ADAPTER_PATH)
+
+
+def run_llm(loader, system, history, max_tokens, temp):
+    from mlx_lm import generate
+    model, tokenizer = loader()
+    messages = [{"role": "system", "content": system}] + history
+    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    kwargs = {}
+    try:
+        from mlx_lm.sample_utils import make_sampler
+        kwargs["sampler"] = make_sampler(temp=temp)
+    except Exception:
+        pass
+    return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens, verbose=False, **kwargs).strip()
+
+
+def dzongkha_only(system, history, max_tokens, temp):
+    reply = run_llm(load_finetuned, system, history, max_tokens, temp)
+    if dzongkha_ratio(reply) >= 0.6:
+        return reply, True
+    reply = run_llm(load_finetuned, RETRY_SYSTEM, history, max_tokens, 0.2)
+    return reply, dzongkha_ratio(reply) >= 0.6
+
+
+# ------------------------------------------------------- Translation (NLLB)
+@st.cache_resource(show_spinner="Loading translation model (first time downloads ~2.5 GB)...")
+def load_translator(repo, src_lang):
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+    tok = AutoTokenizer.from_pretrained(repo, src_lang=src_lang)
+    mdl = AutoModelForSeq2SeqLM.from_pretrained(repo)
+    mdl.eval()
+    return tok, mdl
+
+
+def translate(text, repo, src, tgt, max_new=96):
+    import torch
+    tok, mdl = load_translator(repo, src)
+    inputs = tok(text, return_tensors="pt", truncation=True, max_length=128)
+    with torch.no_grad():
+        out = mdl.generate(**inputs, forced_bos_token_id=tok.convert_tokens_to_ids(tgt),
+                           max_new_tokens=max_new, num_beams=5,
+                           no_repeat_ngram_size=3, repetition_penalty=1.2, early_stopping=True)
+    return tok.batch_decode(out, skip_special_tokens=True)[0].strip()
+
+
+def en_to_dz(text, repo):
+    """Translate sentence by sentence, then clean each sentence (spaces, shad, wrong
+    spellings, locative ལུ) so the joined result reads as proper Dzongkha."""
+    parts = [normalize(translate(s, repo, EN, DZ)) for s in split_sentences(text)]
+    return normalize(" ".join(p for p in parts if p))
+
+
+# ---------------------------------------------------- verified bank + spell check
+@st.cache_resource
+def load_bank_and_lexicon():
+    bank = AnswerBank("verified_kb.json")
+    lex = Lexicon()
+    bank.build_lexicon(lex)
+    lex.add_file("data/lexicon.txt")
+    lex.add_file("data/extra_corpus.txt")      # optional: put real Dzongkha text here (one sentence per line)
+    return bank, lex
+
+
+def pipeline_chat(en_history, user_text, dz_repo, max_tokens, temp):
+    """Return (dz_reply, english_question, english_answer, source).
+    source is "verified" when the answer came from verified_kb.json."""
+    bank, _ = load_bank_and_lexicon()
+    item, score = bank.lookup(user_text)
+    if item:
+        return item["dz_answer"], user_text, "(verified answer bank)", "verified"
+    if dzongkha_ratio(user_text) >= 0.5:
+        en_q = translate(user_text, DZ_TO_EN, DZ, EN)
+    else:
+        en_q = user_text
+    en_history.append({"role": "user", "content": en_q})
+    en_a = clean_en(run_llm(load_base, EN_SYSTEM, en_history, max_tokens, temp))
+    en_history.append({"role": "assistant", "content": en_a})
+    return en_to_dz(en_a, dz_repo), en_q, en_a, "machine"
+
+
+def pipeline_summary(text, dz_repo, max_tokens, temp):
+    en_text = translate(text, DZ_TO_EN, DZ, EN) if dzongkha_ratio(text) >= 0.5 else text
+    en_s = clean_en(run_llm(load_base, EN_SUMMARY_SYSTEM, [{"role": "user", "content": en_text}], max_tokens, temp))
+    return en_to_dz(en_s, dz_repo), en_s
+
+
+# ------------------------------------------------------- Next word (GPT-2)
+@st.cache_resource(show_spinner="Loading next-word model (first time downloads ~3 GB)...")
+def load_nextword():
+    import torch
+    from transformers import GPT2LMHeadModel, PreTrainedTokenizerFast
+    device = "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
+    tok = PreTrainedTokenizerFast.from_pretrained(NEXTWORD_REPO)
+    mdl = GPT2LMHeadModel.from_pretrained(NEXTWORD_REPO).to(device)
+    mdl.eval()
+    return mdl, tok, device
+
+
+def predict_next_words(text, k=5):
+    import torch
+    mdl, tok, device = load_nextword()
+    ids = tok.encode(text, return_tensors="pt").to(device)
+    with torch.no_grad():
+        probs = torch.softmax(mdl(ids).logits[:, -1, :], dim=-1)
+        top_p, top_i = torch.topk(probs, 50)
+    out = []
+    for i, p in zip(top_i[0], top_p[0]):
+        w = tok.decode([int(i)]).strip()
+        if w and not re.search(r"<0x[0-9A-Fa-f]+>", w):
+            out.append((w, p.item()))
+        if len(out) == k:
+            break
+    return out
+
+
+# ======================================================================== UI
+# Front end only. Everything above this line (models, translation, answer bank,
+# spell checking) is unchanged back-end logic.
+import base64
+import html as _html
+import json
+
+import streamlit.components.v1 as components
+
+APP_NAME = "Dzongkha AI Assistant"
+BG_IMAGE = Path(__file__).resolve().parent / "assets" / "chatbot_bg.png"
+
+# Chat avatars (images in the assets folder; falls back to emoji if a file is missing)
+_ASSETS = Path(__file__).resolve().parent / "assets"
+USER_AVATAR = str(_ASSETS / "user_avatar.png") if (_ASSETS / "user_avatar.png").exists() else "🧑"
+BOT_AVATAR = str(_ASSETS / "bot_avatar.png") if (_ASSETS / "bot_avatar.png").exists() else "🐉"
+
+# Fixed values that used to live in the sidebar "Settings" panel.
+MAX_TOKENS = 200
+TEMPERATURE = 0.3
+DZ_REPO = EN_TO_DZ_OPTIONS["KarmaCST en->dz (73K)"]
+
+MODES = {
+    "💬  Chat": "Chat (translate pipeline)",
+    "🎓  Chat (fine-tuned)": "Chat (fine-tuned)",
+    "📝  Summarize": "Summarize",
+    "✨  Next word": "Next word",
+}
+SUGGESTIONS = [
+    ("👋 Greeting", "Hello"),
+    ("🙏 Say thank you", "How do you say thank you in Dzongkha?"),
+    ("🏛️ Capital of Bhutan", "What is the capital of Bhutan?"),
+    ("📅 Days of the week", "How do you say Tuesday in Dzongkha?"),
+    ("🏔️ Tiger's Nest", "What is Paro Taktsang?"),
+    ("🔢 Numbers", "How do you say 5 in Dzongkha?"),
+]
+
+st.set_page_config(page_title=APP_NAME, page_icon="🐉", layout="wide",
+                   initial_sidebar_state="expanded")
+
+
+def _find_bg():
+    here = Path(__file__).resolve().parent
+    for p in (here / "assets" / "chatbot_bg.png", Path.cwd() / "assets" / "chatbot_bg.png",
+              here / "chatbot_bg.png", Path.cwd() / "chatbot_bg.png"):
+        if p.exists():
+            return p
+    return None
+
+
+@st.cache_data(show_spinner=False)
+def _read_b64(path_str: str, mtime: float) -> str:
+    return base64.b64encode(Path(path_str).read_bytes()).decode()
+
+
+def bg_data_uri() -> str:
+    """The background image, embedded so Streamlit needs no static-file setup.
+    A missing file is never cached, so adding it later works after a refresh."""
+    p = _find_bg()
+    if p is None:
+        st.sidebar.warning("Background image not found. Put chatbot_bg.png in an 'assets' folder "
+                           f"next to app.py (looked in: {Path(__file__).resolve().parent / 'assets'}).")
+        return ""
+    return "data:image/png;base64," + _read_b64(str(p), p.stat().st_mtime)
+
+
+CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Noto+Serif+Tibetan:wght@400;600&display=swap');
+:root{
+  /* colours taken from the ornament image */
+  --cream:#fff5dc; --ink:#3a1d10; --muted:#8a6446; --red:#e5432d; --red-dark:#b82f1c;
+  --orange:#f5a623; --green:#14a56b;
+  --glass:rgba(255,250,236,.88); --glass-strong:rgba(255,251,240,.95);
+  --line:rgba(229,67,45,.30); --user:rgba(245,166,35,.24);
+  --ok:#0b7a4d; --warn:#9a5a00;
+  --sbw:336px;                    /* sidebar width (Streamlit default) */
+  --band-gap:calc(46vh + 1.5rem); /* space reserved for the ornament band */
+}
+html, body, [class*="css"], .stApp { font-family:'Manrope',system-ui,sans-serif; color:var(--ink); }
+
+/* background image: ornament band on the left, faint pattern everywhere else */
+.stApp {
+  background: url("__BG__") var(--sbw) 0 / auto 100vh no-repeat fixed, var(--cream);
+}
+/* when the sidebar is collapsed the band moves to the left edge */
+.stApp:has(section[data-testid="stSidebar"][aria-expanded="false"]) {
+  background-position: 0 0, 0 0;
+}
+header[data-testid="stHeader"] { background:transparent; }
+[data-testid="stToolbar"], #MainMenu, footer { display:none !important; }
+[data-testid="stBottom"], [data-testid="stBottom"] > div { background:transparent !important; }
+
+/* content sits to the right of the ornament band */
+.block-container, [data-testid="stBottomBlockContainer"] {
+    width:calc(100% - var(--band-gap) - 1.5rem) !important; max-width:680px !important;
+    margin-left:var(--band-gap) !important; margin-right:auto !important; }
+.block-container { padding-top:1.6rem; padding-bottom:7rem; }
+[data-testid="stBottomBlockContainer"] { padding-left:4.8rem; padding-right:4.8rem; box-sizing:border-box; }
+
+/* Dzongkha text */
+.dz, .dz * { font-family:'Noto Serif Tibetan','Jomolhari','Microsoft Himalaya','Kailasa',serif !important;
+             font-size:1.25rem; line-height:2.0; color:var(--ink); }
+
+/* heading */
+.hero h1 { font-family:'Sora',sans-serif; font-size:2.3rem; font-weight:700; letter-spacing:-.02em;
+           margin:0 0 6px; color:var(--red-dark); }
+.hero p { margin:0; color:var(--muted); font-size:1rem; }
+.hero .tib { font-family:'Noto Serif Tibetan',serif; font-size:1.1rem; color:var(--red); margin-top:8px; }
+.hero { margin-bottom:22px; }
+
+/* welcome */
+.welcome { padding:22px 0 8px; }
+.welcome h2 { font-family:'Sora',sans-serif; font-size:1.35rem; font-weight:600; color:var(--ink); margin-bottom:4px; }
+.welcome p  { color:var(--muted); margin-bottom:0; }
+
+/* buttons + suggestion chips */
+div[data-testid="stButton"], [data-testid="stElementContainer"]:has(> div[data-testid="stButton"]) { width:100% !important; }
+div[data-testid="stButton"] > button { width:100%; border-radius:12px; border:1px solid var(--line);
+    background:var(--glass); color:var(--ink); font-weight:600;
+    padding:.65rem .9rem; transition:border-color .15s ease, box-shadow .15s ease; }
+div[data-testid="stButton"] > button:hover { border-color:var(--red); color:var(--red-dark);
+    box-shadow:0 2px 14px rgba(229,67,45,.22); }
+div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(135deg,var(--red),var(--orange));
+    border:none; color:#fff; font-weight:700; }
+div[data-testid="stButton"] > button[kind="primary"]:hover { box-shadow:0 3px 18px rgba(229,67,45,.45); color:#fff; }
+
+/* chat bubbles */
+[data-testid="stChatMessage"] { background:var(--glass); border:1px solid var(--line);
+    border-radius:18px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 10px rgba(120,60,20,.08); }
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) { background:var(--user); }
+
+/* badges */
+.badge { display:inline-flex; align-items:center; gap:6px; font-size:.76rem; font-weight:600; padding:3px 10px;
+         border-radius:999px; margin-top:6px; }
+.badge.ok   { background:rgba(20,165,107,.12); color:var(--ok); border:1px solid rgba(20,165,107,.40); }
+.badge.warn { background:rgba(245,166,35,.18); color:var(--warn); border:1px solid rgba(245,166,35,.55); }
+
+/* chat input */
+[data-testid="stChatInput"] { border-radius:16px; border:1px solid var(--line); background:var(--glass-strong);
+    box-shadow:0 2px 16px rgba(229,67,45,.14); }
+[data-testid="stChatInput"] textarea { font-family:'Manrope','Noto Serif Tibetan',sans-serif; color:var(--ink); }
+
+/* sidebar */
+section[data-testid="stSidebar"] { background:rgba(255,245,220,.96); border-right:2px solid var(--line); }
+.brand { margin:4px 0 16px; }
+.brand .t { font-family:'Sora',sans-serif; font-weight:700; font-size:1.1rem; color:var(--red-dark); line-height:1.15; }
+.brand .s { font-size:.78rem; color:var(--red); margin-top:2px; }
+.side-label { font-size:.78rem; color:var(--muted); margin:14px 0 4px; font-weight:600; }
+
+/* expanders */
+[data-testid="stExpander"] { background:var(--glass); border:1px solid var(--line); border-radius:12px; }
+
+/* tool pages (summarize / next word) */
+.tool-head { text-align:center; margin:6px auto 26px; max-width:760px; }
+.tool-head h1 { font-family:'Sora',sans-serif; font-size:2.5rem; font-weight:700; letter-spacing:-.02em;
+                color:var(--red-dark); margin:0 0 10px; }
+.tool-head p { color:var(--muted); font-size:1.05rem; margin:0; }
+.panel-head { display:flex; justify-content:space-between; align-items:baseline; margin:0 2px 8px; }
+.panel-head .name { font-family:'Sora',sans-serif; font-weight:600; font-size:1rem; color:var(--ink); }
+.panel-head .count { font-size:.82rem; color:var(--muted); }
+[data-testid="stTextArea"] textarea { background:var(--glass-strong) !important;
+    border:1px solid var(--line) !important; border-radius:16px !important; color:var(--ink) !important;
+    font-size:1rem; line-height:1.6; padding:16px !important; }
+[data-testid="stTextArea"] textarea:focus { border-color:var(--red) !important; box-shadow:0 0 0 1px var(--red) !important; }
+.out-panel { background:var(--glass-strong); border:1px solid var(--line);
+    border-radius:16px; padding:16px 18px; height:340px; overflow-y:auto; }
+.out-panel.empty { display:flex; align-items:center; justify-content:center; text-align:center;
+    color:var(--muted); }
+.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:34px 0 8px; }
+.steps div { background:var(--glass); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+    color:var(--muted); font-size:.92rem; line-height:1.5; }
+.steps b { display:block; color:var(--red-dark); font-family:'Sora',sans-serif; margin-bottom:2px; }
+@media (max-width:760px){ .steps{ grid-template-columns:1fr; } .tool-head h1{ font-size:1.9rem; } }
+
+/* result cards (next word) */
+.card { background:var(--glass); border:1px solid var(--line); border-radius:16px;
+    padding:16px 20px; margin:8px 0 12px; }
+.card h4 { margin:0 0 8px; font-size:.9rem; color:var(--muted); font-weight:600; }
+.pred { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px dashed var(--line); }
+.pred:last-child { border-bottom:none; }
+.pred .rk { width:26px; height:26px; border-radius:50%; background:var(--red); color:#fff; font-size:.78rem;
+            display:flex; align-items:center; justify-content:center; font-weight:700; }
+.pred .bar { flex:1; height:8px; background:rgba(58,29,16,.10); border-radius:99px; overflow:hidden; }
+.pred .bar > i { display:block; height:100%; background:linear-gradient(90deg,var(--orange),var(--red)); }
+.pred .pc { color:var(--muted); font-size:.82rem; width:52px; text-align:right; }
+.foot { text-align:center; color:var(--muted); font-size:.78rem; margin-top:22px; }
+
+/* phones / small windows: no room beside the band, so keep it as a soft backdrop */
+@media (max-width:900px){
+  .stApp, .stApp:has(section[data-testid="stSidebar"][aria-expanded="false"]) {
+    background: linear-gradient(rgba(255,245,220,.86), rgba(255,245,220,.86)),
+                url("__BG__") -20vh 0 / auto 100vh no-repeat fixed, var(--cream); }
+  .block-container, [data-testid="stBottomBlockContainer"] {
+    width:100% !important; margin-left:auto !important; max-width:100% !important;
+    padding-left:1rem; padding-right:1rem; }
+  [data-testid="stChatMessage"], .card, .out-panel, .steps div { background:rgba(255,251,240,.96); }
+}
+
+@media (prefers-reduced-motion: reduce){ * { transition:none !important; } }
+</style>
+""".replace("__BG__", bg_data_uri())
+st.markdown(CSS, unsafe_allow_html=True)
+
+
+# ----------------------------------------------------------------- UI helpers
+def dz_html(text: str) -> str:
+    return f'<div class="dz">{_html.escape(text)}</div>'
+
+
+def syllable_count(text: str) -> int:
+    return len([s for s in re.split(r"[་།\s]+", text) if s])
+
+
+def copy_button(text: str):
+    """Small copy-to-clipboard button (runs in its own iframe, so it carries its own style)."""
+    payload = json.dumps(text)
+    components.html(f"""
+    <button id="c" style="font:600 14px Manrope,system-ui,sans-serif;width:100%;padding:10px 14px;border-radius:12px;
+      border:1px solid rgba(229,67,45,.35);background:#fff8e6;color:#3a1d10;cursor:pointer">Copy summary</button>
+    <script>
+      const b=document.getElementById('c'), t={payload};
+      b.onclick=async()=>{{
+        try{{ await navigator.clipboard.writeText(t); }}
+        catch(e){{ const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select();
+                  document.execCommand('copy'); a.remove(); }}
+        b.textContent='Copied'; setTimeout(()=>b.textContent='Copy summary',1500);
+      }};
+    </script>""", height=48)
+
+
+def check_notes(text, lex):
+    """Run the spelling/structure checker. Returns (cleaned_text, [note strings])."""
+    rep = analyse(text, lex)
+    notes = []
+    if rep.changes:
+        notes.append("Auto-fixed: " + ", ".join(f"{a} → {b}" for a, b in rep.changes))
+    if rep.malformed:
+        notes.append("Malformed syllables: " + ", ".join(rep.malformed))
+    if rep.unknown:
+        notes.append("Not in word list (check spelling): " + ", ".join(
+            w + (f" (did you mean {'/'.join(s)}?)" if s else "") for w, s in rep.unknown[:8]))
+    notes += rep.structure
+    # Dzoseg is an optional public Dzongkha tokenizer. The helper falls back
+    # to traditional Tseg segmentation if the package is not installed.
+    tokens = segment_dzongkha(rep.fixed, method="tseg")
+    if tokens:
+        notes.append(f"Dzongkha syllable segmentation: {len(tokens)} units")
+    return rep.fixed, notes
+
+
+def render_assistant(content, source=None, notes=None, debug=None):
+    st.markdown(dz_html(content) if TIBETAN.search(content) else content, unsafe_allow_html=True)
+    if source == "verified":
+        st.markdown('<span class="badge ok">✔ Verified answer</span>', unsafe_allow_html=True)
+    elif source == "machine":
+        st.markdown('<span class="badge warn">⚠ Machine translated · please double-check spelling</span>',
+                    unsafe_allow_html=True)
+    if notes:
+        with st.expander("Spelling & sentence checks"):
+            for n in notes:
+                st.write("• " + n)
+    if debug and source != "verified":
+        with st.expander("Show English steps"):
+            st.write("**Question:** " + debug[0])
+            st.write("**Answer:** " + debug[1])
+
+
+def render_history(key):
+    for m in st.session_state[key]:
+        with st.chat_message(m["role"], avatar=USER_AVATAR if m["role"] == "user" else BOT_AVATAR):
+            if m["role"] == "user":
+                st.write(m["content"])
+            else:
+                render_assistant(m["content"], m.get("source"), m.get("notes"), m.get("debug"))
+
+
+def get_prompt(placeholder):
+    """Typed message, or a suggestion chip that was clicked."""
+    typed = st.chat_input(placeholder)
+    return typed or st.session_state.pop("pending", None)
+
+
+def welcome():
+    st.markdown(
+        '<div class="welcome"><h2>How can I help you today?</h2>'
+        '<p>Ask in English or Dzongkha. Try one of these:</p></div>', unsafe_allow_html=True)
+    cols = st.columns(2)
+    for i, (label, prompt) in enumerate(SUGGESTIONS):
+        if cols[i % 2].button(label, key=f"sg{i}"):
+            st.session_state["pending"] = prompt
+            st.rerun()
+
+
+def chat_header():
+    st.markdown(
+        f'<div class="hero"><h1>{APP_NAME}</h1>'
+        '<p>Ask in English or Dzongkha. Answers come back in Dzongkha.</p>'
+        '<div class="tib">འབྲུག་རྒྱལ་ཁབ་ཀྱི་རྒྱལ་ཡོངས་སྐད་ཡིག</div></div>', unsafe_allow_html=True)
+
+
+def tool_header(title, subtitle):
+    st.markdown(f'<div class="tool-head"><h1>{title}</h1><p>{subtitle}</p></div>', unsafe_allow_html=True)
+
+
+def widen_page():
+    """Tool pages use a wider column, but still start to the right of the ornament band."""
+    st.markdown("<style>.block-container{max-width:1000px !important;}</style>", unsafe_allow_html=True)
+
+
+def clear_summary():
+    st.session_state["sum_text"] = ""
+    st.session_state.pop("sum_out", None)
+
+
+# -------------------------------------------------------------------- state
+for key, default in [("hist_pipe", []), ("en_hist", []), ("hist_ft", [])]:
+    st.session_state.setdefault(key, default)
+st.session_state.setdefault("sum_text", "")
+
+# ------------------------------------------------------------------ sidebar
+with st.sidebar:
+    st.markdown('<div class="brand"><div class="t">Dzongkha AI</div>'
+                '<div class="s">English ⇄ རྫོང་ཁ</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="side-label">Mode</div>', unsafe_allow_html=True)
+    mode = MODES[st.radio("Mode", list(MODES), label_visibility="collapsed")]
+
+    if st.button("🗑️  New chat"):
+        st.session_state.hist_pipe, st.session_state.en_hist, st.session_state.hist_ft = [], [], []
+        st.session_state.pop("pending", None)
+        st.rerun()
+
+    st.markdown('<div class="side-label">About</div>', unsafe_allow_html=True)
+    st.caption("✔ Verified = answer from the hand-checked answer bank.\n\n"
+               "⚠ Machine translated = cleaned and spell-checked automatically, but not guaranteed.")
+
+# --------------------------------------------------------------------- modes
+if mode == "Chat (translate pipeline)":
+    chat_header()
+    if not st.session_state.hist_pipe:
+        welcome()
+    render_history("hist_pipe")
+    if q := get_prompt("Message the assistant (English or Dzongkha)…"):
+        st.session_state.hist_pipe.append({"role": "user", "content": q})
+        with st.chat_message("user", avatar=USER_AVATAR):
+            st.write(q)
+        with st.chat_message("assistant", avatar=BOT_AVATAR):
+            with st.spinner("Thinking…"):
+                try:
+                    dz, en_q, en_a, source = pipeline_chat(st.session_state.en_hist, q, DZ_REPO, MAX_TOKENS, TEMPERATURE)
+                except Exception as e:
+                    st.error(f"Something went wrong: {e}")
+                    st.stop()
+            notes = []
+            if source != "verified":
+                dz, notes = check_notes(dz, load_bank_and_lexicon()[1])
+            render_assistant(dz, source, notes, (en_q, en_a))
+        st.session_state.hist_pipe.append({"role": "assistant", "content": dz, "source": source,
+                                           "notes": notes, "debug": (en_q, en_a)})
+
+elif mode == "Chat (fine-tuned)":
+    chat_header()
+    st.info("This is your fine-tuned LoRA model. It only knows what is in your training data.", icon="🎓")
+    if not st.session_state.hist_ft:
+        welcome()
+    render_history("hist_ft")
+    if q := get_prompt("Message the fine-tuned model…"):
+        st.session_state.hist_ft.append({"role": "user", "content": q})
+        with st.chat_message("user", avatar=USER_AVATAR):
+            st.write(q)
+        with st.chat_message("assistant", avatar=BOT_AVATAR):
+            with st.spinner("Thinking…"):
+                reply, ok = dzongkha_only(SYSTEM, st.session_state.hist_ft, MAX_TOKENS, TEMPERATURE)
+            reply, notes = check_notes(reply, load_bank_and_lexicon()[1])
+            if not ok:
+                notes.insert(0, "The model did not produce clean Dzongkha.")
+            render_assistant(reply, "machine", notes)
+        st.session_state.hist_ft.append({"role": "assistant", "content": reply, "source": "machine", "notes": notes})
+
+elif mode == "Summarize":
+    widen_page()
+    tool_header("Summarize text",
+                "Paste English or Dzongkha text and get a short summary in Dzongkha.")
+
+    left, right = st.columns(2, gap="large")
+
+    with left:
+        words = len(st.session_state["sum_text"].split())
+        st.markdown(f'<div class="panel-head"><span class="name">Your text</span>'
+                    f'<span class="count">{words} words</span></div>', unsafe_allow_html=True)
+        text = st.text_area("Your text", key="sum_text", height=340, label_visibility="collapsed",
+                            placeholder="Paste or type your text here, then press Ctrl+Enter.")
+        b1, b2 = st.columns([3, 1])
+        run = b1.button("Summarize", type="primary")
+        b2.button("Clear", on_click=clear_summary)
+
+    if run and text.strip():
+        with st.spinner("Summarizing…"):
+            try:
+                dz, en_s = pipeline_summary(text, DZ_REPO, MAX_TOKENS, TEMPERATURE)
+            except Exception as e:
+                st.error(f"Something went wrong: {e}")
+                st.stop()
+        dz, notes = check_notes(dz, load_bank_and_lexicon()[1])
+        st.session_state["sum_out"] = {"dz": dz, "en": en_s, "notes": notes}
+    elif run:
+        st.warning("Add some text first.")
+
+    out = st.session_state.get("sum_out")
+    with right:
+        count = f"{syllable_count(out['dz'])} syllables" if out else ""
+        st.markdown(f'<div class="panel-head"><span class="name">Summary in Dzongkha</span>'
+                    f'<span class="count">{count}</span></div>', unsafe_allow_html=True)
+        if out:
+            st.markdown(f'<div class="out-panel">{dz_html(out["dz"])}</div>', unsafe_allow_html=True)
+            copy_button(out["dz"])
+            if out["notes"]:
+                with st.expander("Spelling & sentence checks"):
+                    for n in out["notes"]:
+                        st.write("• " + n)
+            with st.expander("English summary"):
+                st.write(out["en"])
+        else:
+            st.markdown('<div class="out-panel empty">Your summary will appear here.</div>',
+                        unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="steps">'
+        '<div><b>Paste your text</b>English or Dzongkha, any length that fits the box.</div>'
+        '<div><b>Press Summarize</b>The text is summarized, translated, and spell-checked.</div>'
+        '<div><b>Copy the result</b>Review the checks, then copy the Dzongkha summary.</div>'
+        '</div>', unsafe_allow_html=True)
+
+else:
+    widen_page()
+    tool_header("Next-word prediction", "Type the start of a Dzongkha sentence and see likely next words.")
+    _, mid, _ = st.columns([1, 2, 1])
+    with mid:
+        prefix = st.text_input("Dzongkha text", value="འབྲུག་རྒྱལ་ཁབ་")
+        if st.button("Predict", type="primary") and prefix.strip():
+            with st.spinner("Predicting…"):
+                preds = predict_next_words(prefix)
+            rows = "".join(
+                f'<div class="pred"><div class="rk">{i}</div><div class="dz" style="min-width:90px">{_html.escape(w)}</div>'
+                f'<div class="bar"><i style="width:{min(100, p * 100 * 2):.0f}%"></i></div><div class="pc">{p:.1%}</div></div>'
+                for i, (w, p) in enumerate(preds, 1))
+            st.markdown(f'<div class="card"><h4>Top suggestions</h4>{rows}</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="foot">Dzongkha AI Assistant · NLP module project</div>', unsafe_allow_html=True)

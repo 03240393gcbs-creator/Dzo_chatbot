@@ -1,0 +1,98 @@
+[
+  {
+    "id": "9ac199820793413fb6b65c94a1ccb5c5",
+    "title": "Hello",
+    "mode": "Chat (translate pipeline)",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello"
+      },
+      {
+        "role": "assistant",
+        "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+        "source": "verified",
+        "notes": [],
+        "debug": [
+          "Hello",
+          "(verified answer bank)"
+        ]
+      }
+    ],
+    "en_hist": [],
+    "updated": "2026-11-05T22:54:50"
+  },
+  {
+    "id": "1564d8eaeb97487ab6112e12fbc63626",
+    "title": "hello what are you doing ?",
+    "mode": "Chat (translate pipeline)",
+    "messages": [
+      {
+        "role": "user",
+        "content": "hello what are you doing ?"
+      },
+      {
+        "role": "assistant",
+        "content": "ང་ནཱ་ལུ་ཁྱོད་ལུ་ཆ་རོགས་འབད་བར་འོང་ཡི། ང་གིས་ད་ལྟོ་དམིགས་བསལ་གྱི་ག་ཅི་ཡང་འབད་ནི་མེད།",
+        "source": "machine",
+        "notes": [
+          "Not in word list (check spelling): ནཱ, ཆ, འབད, བར, འོང, ཡི (did you mean ཡིག?), གིས (did you mean གཉིས/གི?), ད",
+          "Sentence does not end in a verb/copula (Dzongkha is verb-final): …བར་འོང་ཡི",
+          "Dzongkha syllable segmentation: 23 units"
+        ],
+        "debug": [
+          "hello what are you doing ?",
+          "I'm here to help you. I'm not doing anything specific right now."
+        ]
+      },
+      {
+        "role": "user",
+        "content": "hello"
+      },
+      {
+        "role": "assistant",
+        "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+        "source": "verified",
+        "notes": [],
+        "debug": [
+          "hello",
+          "(verified answer bank)"
+        ]
+      }
+    ],
+    "en_hist": [
+      {
+        "role": "user",
+        "content": "hello what are you doing ?"
+      },
+      {
+        "role": "assistant",
+        "content": "I'm here to help you. I'm not doing anything specific right now."
+      }
+    ],
+    "updated": "2026-11-05T19:43:08"
+  },
+  {
+    "id": "3338677b7d7a4860b7f977eac57a3501",
+    "title": "Hello",
+    "mode": "Chat (translate pipeline)",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello"
+      },
+      {
+        "role": "assistant",
+        "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+        "source": "verified",
+        "notes": [],
+        "debug": [
+          "Hello",
+          "(verified answer bank)"
+        ]
+      }
+    ],
+    "en_hist": [],
+    "updated": "2026-11-05T19:40:32"
+  }
+]

@@ -1,0 +1,9 @@
+streamlit
+mlx-lm; sys_platform == "darwin"
+transformers
+sentencepiece
+torch
+sacrebleu
+pytest
+# Optional Dzongkha tokenizer trained on a public web/literary corpus
+dzoseg
