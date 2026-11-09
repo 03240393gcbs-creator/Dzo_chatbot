@@ -1,5 +1,637 @@
 [
  {
+  "id": "455a07fd65",
+  "kind": "pipe",
+  "title": "\"cat\" can u translate this ",
+  "ts": 1794216532.900975,
+  "messages": [
+   {
+    "role": "user",
+    "content": "\"cat\" can u translate this "
+   },
+   {
+    "role": "assistant",
+    "content": "བྱི་ལི་ཟེར་མི་འདི་ཐིབཊ་ནང་འོགས་ཟེར་སྐད་སྒྱུར་རྐྱབ་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): བྱི, ལི, ཟེར, མི (did you mean མིང/མིག?), འདི, ཐིབཊ, འོགས (did you mean རོགས?), སྒྱུར",
+     "Dzongkha syllable segmentation: 13 units"
+    ],
+    "debug": [
+     "\"cat\" can u translate this ",
+     "\"Cat\" translates to འོགས་ in Tibetan."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "\"That’s test_god_mode.py, a new file I added alongside the God Mode feature. It’s not part of the app itself, so the chatbot runs fine without it.\""
+   },
+   {
+    "role": "assistant",
+    "content": "ཡིག་སྣོད་བརྟག་དཔྱད་ལྷ་ལུགས་.པི་འདི་ལྷ་ལུགས་ཀྱི་ཁྱད་ཆོས་དང་གཅིག་ཁར་ཁ་སྐོང་གསརཔ་ཅིག་ཨིན་འདི་ལག་ལེན་གྱི་ཆ་ཤས་ཅིག་མེན་པས། དེ་འབདཝ་ལས་གྲོས་བསྡུར་འཕྲུལ་ཆས་འདི་འདི་མེད་པ་ཅིན་ལེགས་ཤོམ་འགྱོ་འོང་།",
+    "source": "general",
+    "notes": [
+     "Malformed syllables: .པི",
+     "Not in word list (check spelling): སྣོད, བརྟག, དཔྱད, ལྷ (did you mean ལྷག?), ལུགས, .པི, འདི, ཁྱད (did you mean ཁྱོད?)",
+     "Dzongkha syllable segmentation: 46 units"
+    ],
+    "debug": [
+     "\"That’s test_god_mode.py, a new file I added alongside the God Mode feature. It’s not part of the app itself, so the chatbot runs fine without it.\"",
+     "The file test god mode.py is a new addition alongside the God Mode feature, not part of the app, so the chatbot runs fine without it."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "\"cat\" can u translate this "
+   },
+   {
+    "role": "assistant",
+    "content": "\"Cat\" translates to འོགས་ in Tibetan."
+   },
+   {
+    "role": "user",
+    "content": "\"That’s test_god_mode.py, a new file I added alongside the God Mode feature. It’s not part of the app itself, so the chatbot runs fine without it.\""
+   },
+   {
+    "role": "assistant",
+    "content": "The file test god mode.py is a new addition alongside the God Mode feature, not part of the app, so the chatbot runs fine without it."
+   }
+  ]
+ },
+ {
+  "id": "c3acb2041a",
+  "kind": "pipe",
+  "title": "cat can u translate this",
+  "ts": 1794209591.6549802,
+  "messages": [
+   {
+    "role": "user",
+    "content": "cat can u translate this"
+   },
+   {
+    "role": "assistant",
+    "content": "ང་གིས་སྐད་སྒྱུར་ག་དེ་སྦེ་འབད་ནི་ཨིན་ན་བརྟན་བརྟན་མེད། ཁྱོད་ཀྱིས་སྐད་ཡིག་སྐད་སྒྱུར་འབད་དགོ་མནོ་མི་འདི་བྱིན་ཚུགས་ག?",
+    "source": "general",
+    "notes": [
+     "Malformed syllables: ག?",
+     "Not in word list (check spelling): གིས (did you mean གཉིས/གི?), སྒྱུར, དེ, སྦེ, འབད, ན, བརྟན, མེད",
+     "Sentence does not end in a verb/copula (Dzongkha is verb-final): …བྱིན་ཚུགས་ག?",
+     "Dzongkha syllable segmentation: 27 units"
+    ],
+    "debug": [
+     "cat can u translate this",
+     "I'm not sure how to translate. Could you provide the language you want translated?"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "cat "
+   },
+   {
+    "role": "assistant",
+    "content": "ང་གིས་ཨ་ཕི་ཞུ་ཡིག་འདི་ག་དེ་སྦེ་འཕྲོ་མཐུད་ནི་ཨིན་ན་བརྟན་བརྟན་མེད།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): གིས (did you mean གཉིས/གི?), ཨ, ཕི, ཞུ, འདི, དེ, སྦེ, འཕྲོ",
+     "Dzongkha syllable segmentation: 18 units"
+    ],
+    "debug": [
+     "cat ",
+     "I'm not sure how to proceed with that request."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "\"cat\" can u translate this"
+   },
+   {
+    "role": "assistant",
+    "content": "ང་གིས་དེ་ག་དེ་སྦེ་སྐད་སྒྱུར་འབད་ནི་ཨིན་ན་བརྟན་བརྟན་མེད།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): གིས (did you mean གཉིས/གི?), དེ, སྦེ, སྒྱུར, འབད, ན, བརྟན, མེད",
+     "Dzongkha syllable segmentation: 15 units"
+    ],
+    "debug": [
+     "\"cat\" can u translate this",
+     "I'm not sure how to translate that."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "\"I love machine learning anda auto machine \" can u translate this"
+   },
+   {
+    "role": "assistant",
+    "content": "ང་གིས་དེ་ག་དེ་སྦེ་སྐད་སྒྱུར་འབད་ནི་ཨིན་ན་བརྟན་བརྟན་མེད། འདི་ང་གིས་ངོས་འཛིན་འབད་ཚུགས་པའི་ཁ་སྐད་ནང་ལུ་ཡོདཔ་བཟུམ་མི་མཐོང་པས།",
+    "source": "general",
+    "notes": [
+     "Auto-fixed: ནང་ཡོད → ནང་ལུ་ཡོད",
+     "Not in word list (check spelling): གིས (did you mean གཉིས/གི?), དེ, སྦེ, སྒྱུར, འབད, ན, བརྟན, མེད",
+     "Dzongkha syllable segmentation: 31 units"
+    ],
+    "debug": [
+     "\"I love machine learning anda auto machine \" can u translate this",
+     "I'm not sure how to translate that. It doesn't appear to be in a language I can identify."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "cat can u translate this"
+   },
+   {
+    "role": "assistant",
+    "content": "I'm not sure how to translate. Could you provide the language you want translated?"
+   },
+   {
+    "role": "user",
+    "content": "cat "
+   },
+   {
+    "role": "assistant",
+    "content": "I'm not sure how to proceed with that request."
+   },
+   {
+    "role": "user",
+    "content": "\"cat\" can u translate this"
+   },
+   {
+    "role": "assistant",
+    "content": "I'm not sure how to translate that."
+   },
+   {
+    "role": "user",
+    "content": "\"I love machine learning anda auto machine \" can u translate this"
+   },
+   {
+    "role": "assistant",
+    "content": "I'm not sure how to translate that. It doesn't appear to be in a language I can identify."
+   }
+  ]
+ },
+ {
+  "id": "6d6b2df297",
+  "kind": "pipe",
+  "title": "who is prime minister of bhutan",
+  "ts": 1794028969.46636,
+  "messages": [
+   {
+    "role": "user",
+    "content": "who is prime minister of bhutan"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་གི་བློན་ཆེན་འདི་ཚེ་རིང་སྟོབས་རྒྱས་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): བློན, ཆེན (did you mean ཆེ?), འདི, ཚེ, རིང, སྟོབས, རྒྱས (did you mean རྒྱལ?)",
+     "Dzongkha syllable segmentation: 10 units"
+    ],
+    "debug": [
+     "who is prime minister of bhutan",
+     "The prime minister of Bhutan is Tshering Tobgay."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "national flower of Bhutan "
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་རྒྱལ་ཁབ་ཀྱི་རྒྱལ་ཡོངས་མེ་ཏོག་འདི་སྟག་ཚེར་འབུཔ་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): ཁབ, མེ (did you mean མེན?), ཏོག, འདི, ཚེར, འབུཔ",
+     "Dzongkha syllable segmentation: 13 units"
+    ],
+    "debug": [
+     "national flower of Bhutan ",
+     "The national flower of Bhutan is the lotus."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "who is prime minister of bhutan"
+   },
+   {
+    "role": "assistant",
+    "content": "The prime minister of Bhutan is Tshering Tobgay."
+   },
+   {
+    "role": "user",
+    "content": "national flower of Bhutan "
+   },
+   {
+    "role": "assistant",
+    "content": "The national flower of Bhutan is the lotus."
+   }
+  ]
+ },
+ {
+  "id": "1d6727c78a",
+  "kind": "ft",
+  "title": "hello",
+  "ts": 1794028332.005302,
+  "messages": [
+   {
+    "role": "user",
+    "content": "hello"
+   },
+   {
+    "role": "assistant",
+    "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "hello",
+     "(verified answer bank)"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "what are you doing ?"
+   },
+   {
+    "role": "assistant",
+    "content": "ང་གིས་རྒྱལ་ཁབ་སོ་སོ་དང་གནད་དོན་ཚུ་སྐོར་ལས་དྲི་བ་ཚུ་བྱིན་མི་ཚད་འཛིན་གྱི་ནང་འཁོད་ལུ་ལན་རྐྱབ་དོ།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): གིས (did you mean གཉིས/གི?), ཁབ, སོ (did you mean སྨོ?), དང, གནད, དོན (did you mean དགོན?), ཚུ, སྐོར",
+     "Sentence does not end in a verb/copula (Dzongkha is verb-final): …ལན་རྐྱབ་དོ",
+     "Dzongkha syllable segmentation: 26 units"
+    ],
+    "debug": [
+     "what are you doing ?",
+     "I am answering questions about various countries and topics within the given limit."
+    ]
+   }
+  ],
+  "en_hist": []
+ },
+ {
+  "id": "d9383aa978",
+  "kind": "pipe",
+  "title": "which continent of Bhutan ?",
+  "ts": 1794027773.8732889,
+  "messages": [
+   {
+    "role": "user",
+    "content": "which continent of Bhutan ?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་འདི་རྒྱལ་ཁབ་དང་འདི་ཨེ་ཤི་ཡ་གི་རྒྱལ་ཁབ་ཅིག་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): འདི, ཁབ, དང, ཨེ, ཤི, ཡ",
+     "Dzongkha syllable segmentation: 14 units"
+    ],
+    "debug": [
+     "which continent of Bhutan ?",
+     "Bhutan is not a continent, it is a country in Asia."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "national animal of Bhutan ?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་རྒྱལ་ཁབ་ཀྱི་རྒྱལ་ཡོངས་སེམས་ཅན་འདི་ཏཱ་ཀིན་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): ཁབ, སེམས, ཅན, འདི, ཏཱ, ཀིན",
+     "Dzongkha syllable segmentation: 12 units"
+    ],
+    "debug": [
+     "national animal of Bhutan ?",
+     "The national animal of Bhutan is the Takin."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "which continent of Bhutan ?"
+   },
+   {
+    "role": "assistant",
+    "content": "Bhutan is not a continent, it is a country in Asia."
+   },
+   {
+    "role": "user",
+    "content": "national animal of Bhutan ?"
+   },
+   {
+    "role": "assistant",
+    "content": "The national animal of Bhutan is the Takin."
+   }
+  ]
+ },
+ {
+  "id": "f06ddd5976",
+  "kind": "pipe",
+  "title": "who is prime minister of Bhutan ?",
+  "ts": 1794027578.373307,
+  "messages": [
+   {
+    "role": "user",
+    "content": "who is prime minister of Bhutan ?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་ལུ་སྲིད་འཛིན་མེད། འདི་རྩ་ཁྲིམས་ཆེན་མོའི་རྒྱལ་ཁམས་ཅིག་ཨིན། རྒྱལ་ཁབ་ཀྱི་དབུ་འཛིན་འདི་སྤྱི་ལོ་༢༠༠༦ ལས་རྒྱལཔོ་སྦེ་བཞུགས་མི་ཧིསི་མཱཇེསི་ཊེཀིའིན་རྒྱལ་པོ་འཇིགས་མེད་ལྷ་རྒྱལ་རྣམ་རྒྱལ་དབང་ཕྱུག་ཨིན། གཞུང་གི་དབུ་འཛིན་འདི་སྤྱི་ལོ་༢༠༢༤ སྤྱི་ཟླ་དང་པའི་སྤྱི་ཚེས་ལས་ཡིག་ཚང་ནང་ལུ་ཡོད་པའི་བློན་ཆེན་ཚེ་རིང་སྟོབས་རྒྱས་ཨིན།",
+    "source": "machine",
+    "notes": [
+     "Not in word list (check spelling): སྲིད, འཛིན, མེད, འདི, རྩ, ཁྲིམས, ཆེན (did you mean ཆེ?), མོའི",
+     "Dzongkha syllable segmentation: 65 units"
+    ],
+    "debug": [
+     "who is prime minister of Bhutan ?",
+     "Bhutan does not have a president. It is a constitutional monarchy. The head of state is His Majesty King Jigme Khesar Namgyel Wangchuck, who has been King since 2006. The head of government is Prime Minister Tshering Tobgay, in office since January 2024."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "prime minister of India ?"
+   },
+   {
+    "role": "assistant",
+    "content": "རྒྱ་གར་གྱི་ད་ལྟོའི་སྲིད་འཛིན་བློན་པོ་འདི་ན་རེ་ན་ཌ་མོ་ཌི་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): རྒྱ (did you mean རྒྱལ/བརྒྱད?), གར, གྱི (did you mean གི?), ད, ལྟོའི, སྲིད, འཛིན, བློན",
+     "Dzongkha syllable segmentation: 17 units"
+    ],
+    "debug": [
+     "prime minister of India ?",
+     "The current prime minister of India is Narendra Modi."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "prime minister of India ?"
+   },
+   {
+    "role": "assistant",
+    "content": "The current prime minister of India is Narendra Modi."
+   }
+  ]
+ },
+ {
+  "id": "83080068a3",
+  "kind": "pipe",
+  "title": "capital of India ?",
+  "ts": 1794027065.3611362,
+  "messages": [
+   {
+    "role": "user",
+    "content": "capital of India ?"
+   },
+   {
+    "role": "assistant",
+    "content": "རྒྱ་གར་གྱི་རྒྱལ་ས་ལྟེ་བ་འདི་ནིའུ་ཌེ་ལི་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): རྒྱ (did you mean རྒྱལ/བརྒྱད?), གར, གྱི (did you mean གི?), ལྟེ, འདི, ནིའུ, ཌེ, ལི",
+     "Dzongkha syllable segmentation: 12 units"
+    ],
+    "debug": [
+     "capital of India ?",
+     "The capital of India is New Delhi."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "who is president of India?"
+   },
+   {
+    "role": "assistant",
+    "content": "རྒྱ་གར་གྱི་ད་ལྟོའི་སྲིད་འཛིན་འདི་རཱ་མ་ནཱ་ཐཱི་ཀོ་ཝིནཌ་ཨིན།",
+    "source": "general",
+    "notes": [
+     "Not in word list (check spelling): རྒྱ (did you mean རྒྱལ/བརྒྱད?), གར, གྱི (did you mean གི?), ད, ལྟོའི, སྲིད, འཛིན, འདི",
+     "Dzongkha syllable segmentation: 15 units"
+    ],
+    "debug": [
+     "who is president of India?",
+     "The current president of India is Ram Nath Kovind."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "capital of India ?"
+   },
+   {
+    "role": "assistant",
+    "content": "The capital of India is New Delhi."
+   },
+   {
+    "role": "user",
+    "content": "who is president of India?"
+   },
+   {
+    "role": "assistant",
+    "content": "The current president of India is Ram Nath Kovind."
+   }
+  ]
+ },
+ {
+  "id": "513b810f3b",
+  "kind": "pipe",
+  "title": "hello",
+  "ts": 1794026085.373198,
+  "messages": [
+   {
+    "role": "user",
+    "content": "hello"
+   },
+   {
+    "role": "assistant",
+    "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "hello",
+     "(verified answer bank)"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "who is the prime minister of USA ?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་ལུ་སྲིད་འཛིན་མེད། འདི་རྩ་ཁྲིམས་ཆེན་མོའི་རྒྱལ་ཁམས་ཅིག་ཨིན། རྒྱལ་ཁབ་ཀྱི་དབུ་འཛིན་འདི་སྤྱི་ལོ་༢༠༠༦ ལས་རྒྱལཔོ་སྦེ་བཞུགས་མི་ཧིསི་མཱཇེསི་ཊེཀིའིན་རྒྱལ་པོ་འཇིགས་མེད་ལྷ་རྒྱལ་རྣམ་རྒྱལ་དབང་ཕྱུག་ཨིན། གཞུང་གི་དབུ་འཛིན་འདི་སྤྱི་ལོ་༢༠༢༤ སྤྱི་ཟླ་དང་པའི་སྤྱི་ཚེས་ལས་ཡིག་ཚང་ནང་ལུ་ཡོད་པའི་བློན་ཆེན་ཚེ་རིང་སྟོབས་རྒྱས་ཨིན།",
+    "source": "machine",
+    "notes": [
+     "Not in word list (check spelling): སྲིད, འཛིན, མེད, འདི, རྩ, ཁྲིམས, ཆེན (did you mean ཆེ?), མོའི",
+     "Dzongkha syllable segmentation: 65 units"
+    ],
+    "debug": [
+     "who is the prime minister of USA ?",
+     "Bhutan does not have a president. It is a constitutional monarchy. The head of state is His Majesty King Jigme Khesar Namgyel Wangchuck, who has been King since 2006. The head of government is Prime Minister Tshering Tobgay, in office since January 2024."
+    ]
+   },
+   {
+    "role": "user",
+    "content": "what is the national animal of Bhutan?"
+   },
+   {
+    "role": "assistant",
+    "content": "དགོངསམ་མ་ཁྲེལ་ང་ལུ་དེ་གི་སྐོར་ལས་གནས་ཚུལ་ད་ལྟོ་ཡང་མེད། ང་གིས་ངེ་གི་གནས་སྡུད་ནང་ལུ་ཡོད་མི་དྲི་བ་ཚུ་རྐྱངམ་ཅིག་ལན་རྐྱབ་ཚུགས།",
+    "source": "machine",
+    "notes": [
+     "Auto-fixed: ནང་ཡོད → ནང་ལུ་ཡོད",
+     "Not in word list (check spelling): དགོངསམ, ཁྲེལ, དེ, སྐོར, ལས, གནས, ཚུལ, ད",
+     "Dzongkha syllable segmentation: 32 units"
+    ],
+    "debug": [
+     "what is the national animal of Bhutan?",
+     "Sorry, I don't have information about that yet. I can only answer questions that are in my data."
+    ]
+   }
+  ],
+  "en_hist": []
+ },
+ {
+  "id": "3e8818b816",
+  "kind": "pipe",
+  "title": "hello",
+  "ts": 1794025699.811509,
+  "messages": [
+   {
+    "role": "user",
+    "content": "hello"
+   },
+   {
+    "role": "assistant",
+    "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "hello",
+     "(verified answer bank)"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "who is the president of Bhutan ?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་ལུ་སྲིད་འཛིན་མེད། འདི་རྩ་ཁྲིམས་ཆེན་མོའི་རྒྱལ་ཁམས་ཅིག་ཨིན། རྒྱལ་ཁབ་ཀྱི་དབུ་འཛིན་འདི་སྤྱི་ལོ་༢༠༠༦ ལས་རྒྱལཔོ་སྦེ་སྡོད་མི་ཁོ་གི་མངའ་དབང་རྒྱལ་པོ་འཇིགས་མེད་ལྷ་སར་རྣམ་རྒྱལ་དབང་ཕྱུག་ཨིན། གཞུང་གི་དབུ་འཛིན་འདི་སྤྱི་ལོ་༢༠༢༤ གི་སྤྱི་ཟླ་དང་པའི་ནང་ལས་ཡིག་ཚང་ནང་ལུ་ཡོད་པའི་བློན་ཆེན་ཚེ་རིང་སྟོབས་རྒྱས་ཨིན།",
+    "source": "machine",
+    "notes": [
+     "Auto-fixed: ནང་ཡོད → ནང་ལུ་ཡོད",
+     "Not in word list (check spelling): སྲིད, འཛིན, མེད, འདི, རྩ, ཁྲིམས, ཆེན (did you mean ཆེ?), མོའི",
+     "Dzongkha syllable segmentation: 66 units"
+    ],
+    "debug": [
+     "who is the president of Bhutan ?",
+     "Bhutan does not have a president. It is a constitutional monarchy. The head of state is His Majesty King Jigme Khesar Namgyel Wangchuck, who has been King since 2006. The head of government is Prime Minister Tshering Tobgay, in office since January 2024."
+    ]
+   }
+  ],
+  "en_hist": []
+ },
+ {
+  "id": "116110140d",
+  "kind": "pipe",
+  "title": "hello",
+  "ts": 1794025072.16652,
+  "messages": [
+   {
+    "role": "user",
+    "content": "hello"
+   },
+   {
+    "role": "assistant",
+    "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "hello",
+     "(verified answer bank)"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "who is the president of Bhutan?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་གི་རྒྱལ་ས་ནི་ཐིམ་ཕུ་ཨིན།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "who is the president of Bhutan?",
+     "(verified answer bank)"
+    ]
+   },
+   {
+    "role": "user",
+    "content": "who is president of Bhutan now capital ?"
+   },
+   {
+    "role": "assistant",
+    "content": "འབྲུག་རྒྱལ་ཁབ་ཀྱི་ད་ལྟོའི་སྲིད་འཛིན་འདི་འཇིགས་མེད་བདེ་ཆེན་རྣམ་རྒྱལ་དབང་ཕྱུག་ཨིནམ་དང་རྒྱལ་ས་ལྟེ་བ་འདི་ཐིམ་ཕུག་ཨིན།",
+    "source": "machine",
+    "notes": [
+     "Not in word list (check spelling): ཁབ, ད, ལྟོའི, སྲིད, འཛིན, འདི, འཇིགས, མེད",
+     "Dzongkha syllable segmentation: 27 units"
+    ],
+    "debug": [
+     "who is president of Bhutan now capital ?",
+     "The current president of Bhutan is Jigme Khesar Namgyal Wangchuck and the capital is Thimphu."
+    ]
+   }
+  ],
+  "en_hist": [
+   {
+    "role": "user",
+    "content": "who is president of Bhutan now capital ?"
+   },
+   {
+    "role": "assistant",
+    "content": "The current president of Bhutan is Jigme Khesar Namgyal Wangchuck and the capital is Thimphu."
+   }
+  ]
+ },
+ {
+  "id": "51ac6407d9",
+  "kind": "pipe",
+  "title": "hello",
+  "ts": 1793961842.103874,
+  "messages": [
+   {
+    "role": "user",
+    "content": "hello"
+   },
+   {
+    "role": "assistant",
+    "content": "སྐུ༌གཟུགས༌བཟང༌པོ།",
+    "source": "verified",
+    "notes": [],
+    "debug": [
+     "hello",
+     "(verified answer bank)"
+    ]
+   }
+  ],
+  "en_hist": []
+ },
+ {
   "id": "a9e2acde93",
   "kind": "pipe",
   "title": "hello",

@@ -7,3 +7,4 @@ sacrebleu
 pytest
 # Optional Dzongkha tokenizer trained on a public web/literary corpus
 dzoseg
+ddgs

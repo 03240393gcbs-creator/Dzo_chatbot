@@ -233,7 +233,11 @@ class AnswerBank:
     def _keys(self, item):
         yield from item.get("questions", [])
 
-    def lookup(self, query: str, threshold: float = 0.75):
+    def lookup(self, query: str, threshold: float = 0.6):
+        """Exact match first. Otherwise a fuzzy match that is deliberately strict:
+        the *content words* must really overlap (so "who is the king of bhutan" can no
+        longer match "what is the capital of bhutan" just because both say "bhutan"),
+        and numbers must be identical (so "5" never matches "6")."""
         q = normalize(query, digits=False, strip_foreign=False).strip().lower().rstrip("?!. ")
         qt = _tok(q)
         best, best_score = None, 0.0
@@ -242,10 +246,17 @@ class AnswerBank:
                 kk = normalize(k, digits=False, strip_foreign=False).lower().rstrip("?!. ")
                 if q == kk:
                     return it, 1.0
-                score = difflib.SequenceMatcher(None, q, kk).ratio()
                 kt = _tok(kk)
-                if qt and kt:                               # keyword overlap (e.g. "tuesday")
-                    score = max(score, 0.5 * score + 0.5 * len(qt & kt) / len(qt | kt))
+                if qt and kt:                                   # English / Latin text
+                    if {t for t in qt if t.isdigit()} != {t for t in kt if t.isdigit()}:
+                        continue
+                    score = len(qt & kt) / len(qt | kt)         # content-word overlap
+                elif not qt and not kt:                         # Dzongkha text
+                    score = difflib.SequenceMatcher(None, q, kk).ratio()
+                    if score < 0.85:
+                        continue
+                else:
+                    continue
                 if score > best_score:
                     best, best_score = it, score
         return (best, best_score) if best_score >= threshold else (None, best_score)
@@ -256,3 +267,88 @@ class AnswerBank:
             for q in it.get("questions", []):
                 if TIB.search(q):
                     lex.add_text(q)
+
+
+
+BHUTAN_TERMS = ("bhutan", "bhutanese", "thimphu", "dzongkha", "druk", "paro", "punakha")
+
+# Other countries (and their adjectives). If the question names one of these and does NOT
+# mention Bhutan, the Bhutan facts are skipped and the AI model answers instead.
+OTHER_COUNTRIES = {
+    "afghanistan", "afghan", "albania", "algeria", "argentina", "argentine", "armenia", "australia", "australian",
+    "austria", "austrian", "azerbaijan", "bahrain", "bangladesh", "bangladeshi", "belarus", "belgium", "belgian",
+    "bolivia", "bosnia", "brazil", "brazilian", "britain", "british", "england", "english", "scotland", "wales",
+    "uk", "united kingdom", "bulgaria", "burma", "cambodia", "cambodian", "cameroon", "canada", "canadian",
+    "chile", "china", "chinese", "colombia", "congo", "costa rica", "croatia", "cuba", "cuban", "cyprus",
+    "czech", "denmark", "danish", "ecuador", "egypt", "egyptian", "estonia", "ethiopia", "finland", "finnish",
+    "france", "french", "georgia", "germany", "german", "ghana", "greece", "greek", "hungary", "iceland",
+    "india", "indian", "indonesia", "indonesian", "iran", "iranian", "iraq", "iraqi", "ireland", "irish",
+    "israel", "israeli", "italy", "italian", "jamaica", "japan", "japanese", "jordan", "kazakhstan", "kenya",
+    "korea", "korean", "kuwait", "laos", "latvia", "lebanon", "libya", "lithuania", "luxembourg", "malaysia",
+    "malaysian", "maldives", "mali", "malta", "mexico", "mexican", "mongolia", "morocco", "myanmar", "nepal",
+    "nepali", "nepalese", "netherlands", "dutch", "new zealand", "nigeria", "norway", "norwegian", "oman",
+    "pakistan", "pakistani", "palestine", "panama", "peru", "philippines", "filipino", "poland", "polish",
+    "portugal", "portuguese", "qatar", "romania", "russia", "russian", "rwanda", "saudi", "senegal", "serbia",
+    "singapore", "slovakia", "slovenia", "somalia", "south africa", "spain", "spanish", "sri lanka", "sudan",
+    "sweden", "swedish", "switzerland", "swiss", "syria", "taiwan", "tajikistan", "tanzania", "thailand", "thai",
+    "tibet", "tibetan", "tunisia", "turkey", "turkish", "uganda", "ukraine", "ukrainian", "uae", "emirates",
+    "usa", "us", "america", "american", "united states", "uruguay", "uzbekistan", "venezuela", "vietnam",
+    "vietnamese", "yemen", "zambia", "zimbabwe", "europe", "european", "africa", "african", "asia", "asian",
+    "world",
+}
+
+
+def _mentions(q: str, words) -> bool:
+    return any(re.search(r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", q) for w in words)
+
+
+class FactBank:
+    """English facts about Bhutan (facts_en.json). Used to GROUND the chatbot: if the question
+    is about Bhutan and matches a fact, the answer comes from the fact, not from the language
+    model's memory. Questions about any other country are NOT matched (the AI model answers them).
+    Each fact: {"id", "keywords": [...], "answer_en": "..."}"""
+
+    def __init__(self, path: str | Path):
+        p = Path(path)
+        self.items = json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
+
+    def lookup(self, query: str, max_facts: int = 2):
+        q = " " + re.sub(r"[^a-z0-9' ]+", " ", query.lower()) + " "
+        if not _mentions(q, BHUTAN_TERMS) and _mentions(q, OTHER_COUNTRIES):
+            return []                      # e.g. "capital of India" -> not a Bhutan question
+        scored = []
+        for f in self.items:
+            hits = sum(1 for kw in f.get("keywords", []) if _mentions(q, [kw.lower()]))
+            if hits:
+                scored.append((hits, f))
+        scored.sort(key=lambda x: -x[0])
+        return [f for _, f in scored[:max_facts]]
+
+# ------------------------------------------------------------------ God Mode
+# "/god" turns on a translate-only mode: every message is translated instead of answered.
+#   /god            toggle God Mode          /god on  /god off
+#   /god <text>     translate <text> once (God Mode state unchanged)
+_GOD = re.compile(r"^\s*/god[\s_-]*(?:mo+de?\b)?\s*(.*)$", re.I | re.S)
+
+
+def parse_god_command(message: str):
+    """None if the message is not a /god command, else (action, text).
+    action is 'toggle' | 'on' | 'off' | 'translate' (text is only set for 'translate')."""
+    m = _GOD.match(message or "")
+    if not m:
+        return None
+    rest = m.group(1).strip()
+    low = rest.lower()
+    if not rest:
+        return "toggle", ""
+    if low in ("on", "start", "enable"):
+        return "on", ""
+    if low in ("off", "stop", "exit", "end", "disable"):
+        return "off", ""
+    return "translate", rest
+
+
+def split_dz_sentences(text: str) -> list[str]:
+    """Split Dzongkha text after each shad so long passages are translated sentence by sentence."""
+    parts = [p.strip() for p in re.split(f"(?<={SHAD})\\s*", text or "")]
+    return [p for p in parts if p and p.strip(SHAD + " ")]

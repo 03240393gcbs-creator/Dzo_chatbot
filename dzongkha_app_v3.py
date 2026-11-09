@@ -10,14 +10,30 @@ Run from the project folder:
     pip install transformers sentencepiece torch
     streamlit run dzongkha_app_v3.py
 """
+import json
 import re
+import time
+import urllib.parse
+import urllib.request
+from functools import lru_cache
 from pathlib import Path
 import streamlit as st
 
-from dzongkha_nlp import AnswerBank, Lexicon, analyse, normalize
+from dzongkha_nlp import (AnswerBank, FactBank, Lexicon, analyse, normalize,
+                          parse_god_command, split_dz_sentences)
 from govtech_dnlp import segment_dzongkha
 
-BASE_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+# Bigger model = better, more accurate answers (slower, larger first download).
+#   small & fast : "Qwen/Qwen2.5-1.5B-Instruct"
+#   recommended  : "mlx-community/Qwen2.5-3B-Instruct-4bit"
+#   best quality : "mlx-community/Qwen2.5-7B-Instruct-4bit"   (needs 16 GB RAM)
+BASE_MODEL = "mlx-community/Qwen2.5-3B-Instruct-4bit"
+# Faster option: Ollama (https://ollama.com). Install it, then run once in Terminal:   ollama pull qwen2.5:3b
+# If Ollama is running, the app uses it automatically; otherwise it falls back to the MLX model above.
+OLLAMA_URL = "http://localhost:11434"
+OLLAMA_MODEL = "qwen2.5:3b"          # other choices: "llama3.2:3b" (faster), "qwen2.5:7b" (better, slower)
+USE_WEB = True                        # look things up on the web before answering general questions
+TIMES = {}                            # seconds spent per step, shown under each reply
 ADAPTER_PATH = "./data/adapters"
 NEXTWORD_REPO = "KarmaCST/dzongkha_nextword_gpt2"
 
@@ -34,8 +50,13 @@ SYSTEM = "Always reply in Dzongkha."
 SUMMARY_SYSTEM = "Always reply in Dzongkha. Summarize the text the user gives you briefly in Dzongkha."
 RETRY_SYSTEM = ("You must answer ONLY in Dzongkha, written in Tibetan script. "
                 "Do not use English or Chinese.")
-EN_SYSTEM = ("You are a helpful assistant. Answer in at most 3 short, simple English sentences. "
-             "No lists, no markdown, no emojis.")
+EN_SYSTEM = ("You are a helpful, knowledgeable assistant. Answer ANY question about any country or topic in at most 3 short, "
+             "simple English sentences. No lists, no markdown, no emojis. "
+             "Use the following background ONLY when the question is about Bhutan; for other countries answer normally. Bhutan is a constitutional monarchy. Its head of state is the King (Jigme Khesar Namgyel Wangchuck) "
+             "and its Prime Minister is Tshering Tobgay. Bhutan has no president. Its capital is Thimphu. "
+             "If you are not sure of a fact, say you are not sure instead of guessing.")
+GROUNDED_SYSTEM = ("You are a helpful assistant for a Bhutan/Dzongkha app. Answer using ONLY the facts below. "
+                   "Do not add any information that is not in the facts. Answer in at most 3 short, simple English sentences.\n\nFacts:\n{facts}")
 EN_SUMMARY_SYSTEM = "Summarize the user's text in 2 short, simple English sentences. No lists, no markdown."
 
 TIBETAN = re.compile(r"[\u0F00-\u0FFF]")
@@ -70,18 +91,79 @@ def load_finetuned():
     return load(BASE_MODEL, adapter_path=ADAPTER_PATH)
 
 
-def run_llm(loader, system, history, max_tokens, temp):
-    from mlx_lm import generate
-    model, tokenizer = loader()
-    messages = [{"role": "system", "content": system}] + history
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    kwargs = {}
+# ---------------------------------------------------------------- live web lookup
+SKIP_WEB = re.compile(r"^\s*(hi|hello|hey|thanks?|thank you|bye|goodbye|good (morning|afternoon|evening|night)|how are you|who are you|what is your name)\b", re.I)
+
+
+def _wikipedia(query, n=3):
+    url = ("https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrlimit=%d&prop=extracts"
+           "&exintro=1&explaintext=1&exsentences=4&format=json&gsrsearch=%s" % (n, urllib.parse.quote(query)))
+    req = urllib.request.Request(url, headers={"User-Agent": "DzongkhaChatbot/1.0 (student project)"})
+    with urllib.request.urlopen(req, timeout=6) as r:
+        pages = json.loads(r.read()).get("query", {}).get("pages", {})
+    return [p.get("extract", "") for p in sorted(pages.values(), key=lambda p: p.get("index", 99))]
+
+
+@lru_cache(maxsize=128)
+def web_context(query: str) -> str:
+    """Up-to-date snippets from the web (DuckDuckGo if the 'ddgs' package is installed, else Wikipedia)."""
+    snippets = []
     try:
-        from mlx_lm.sample_utils import make_sampler
-        kwargs["sampler"] = make_sampler(temp=temp)
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            from duckduckgo_search import DDGS
+        with DDGS() as d:
+            snippets = [r.get("body", "") for r in d.text(query, max_results=5)]
     except Exception:
-        pass
-    return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens, verbose=False, **kwargs).strip()
+        snippets = []
+    if not any(snippets):
+        try:
+            snippets = _wikipedia(query)
+        except Exception:
+            snippets = []
+    text = "\n".join("- " + x.strip().replace("\n", " ") for x in snippets if x and x.strip())
+    return text[:1800]
+
+
+@lru_cache(maxsize=1)
+def ollama_ready():
+    """True if Ollama is running locally and has OLLAMA_MODEL installed."""
+    try:
+        with urllib.request.urlopen(OLLAMA_URL + "/api/tags", timeout=1) as r:
+            names = [m.get("name", "") for m in json.loads(r.read()).get("models", [])]
+        return OLLAMA_MODEL in names
+    except Exception:
+        return False
+
+
+def run_ollama(system, history, max_tokens, temp):
+    body = json.dumps({"model": OLLAMA_MODEL, "stream": False, "keep_alive": "30m",
+                       "messages": [{"role": "system", "content": system}] + history,
+                       "options": {"temperature": temp, "num_predict": max_tokens}}).encode()
+    req = urllib.request.Request(OLLAMA_URL + "/api/chat", data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=300) as r:
+        return json.loads(r.read())["message"]["content"].strip()
+
+
+def run_llm(loader, system, history, max_tokens, temp):
+    t0 = time.time()
+    try:
+        if loader is load_base and ollama_ready():
+            return run_ollama(system, history, max_tokens, temp)
+        from mlx_lm import generate
+        model, tokenizer = loader()
+        messages = [{"role": "system", "content": system}] + history
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        kwargs = {}
+        try:
+            from mlx_lm.sample_utils import make_sampler
+            kwargs["sampler"] = make_sampler(temp=temp)
+        except Exception:
+            pass
+        return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens, verbose=False, **kwargs).strip()
+    finally:
+        TIMES["model"] = TIMES.get("model", 0) + time.time() - t0
 
 
 def dzongkha_only(system, history, max_tokens, temp):
@@ -95,29 +177,90 @@ def dzongkha_only(system, history, max_tokens, temp):
 # ------------------------------------------------------- Translation (NLLB)
 @st.cache_resource(show_spinner="Loading translation model (first time downloads ~2.5 GB)...")
 def load_translator(repo, src_lang):
+    import torch
     from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
     tok = AutoTokenizer.from_pretrained(repo, src_lang=src_lang)
     mdl = AutoModelForSeq2SeqLM.from_pretrained(repo)
     mdl.eval()
-    return tok, mdl
+    device = "mps" if torch.backends.mps.is_available() else "cpu"   # Apple GPU is much faster than CPU
+    try:
+        mdl.to(device)
+    except Exception:
+        device = "cpu"
+    return tok, mdl, device
 
 
-def translate(text, repo, src, tgt, max_new=96):
+# Every translation is saved to translation_cache.json, so the same sentence is instant next time.
+CACHE_FILE = Path(__file__).resolve().parent / "translation_cache.json"
+_CACHE = None
+
+
+def _cache():
+    global _CACHE
+    if _CACHE is None:
+        try:
+            _CACHE = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            _CACHE = {}
+    return _CACHE
+
+
+def translate(text, repo, src, tgt, max_new=80):
+    t0 = time.time()
+    try:
+        return _translate(text, repo, src, tgt, max_new)
+    finally:
+        TIMES["translate"] = TIMES.get("translate", 0) + time.time() - t0
+
+
+def _translate(text, repo, src, tgt, max_new=80):
     import torch
-    tok, mdl = load_translator(repo, src)
-    inputs = tok(text, return_tensors="pt", truncation=True, max_length=128)
-    with torch.no_grad():
+    key = f"{repo}|{src}|{tgt}|{text}"
+    cache = _cache()
+    if key in cache:
+        return cache[key]
+    tok, mdl, device = load_translator(repo, src)
+    inputs = tok(text, return_tensors="pt", truncation=True, max_length=128).to(device)
+    with torch.inference_mode():
         out = mdl.generate(**inputs, forced_bos_token_id=tok.convert_tokens_to_ids(tgt),
-                           max_new_tokens=max_new, num_beams=5,
+                           max_new_tokens=max_new, num_beams=2,       # was 5: ~2x faster, similar quality
                            no_repeat_ngram_size=3, repetition_penalty=1.2, early_stopping=True)
-    return tok.batch_decode(out, skip_special_tokens=True)[0].strip()
+    result = tok.batch_decode(out.to("cpu"), skip_special_tokens=True)[0].strip()
+    if result:
+        cache[key] = result
+        try:
+            CACHE_FILE.write_text(json.dumps(cache, ensure_ascii=False, indent=0), encoding="utf-8")
+        except Exception:
+            pass
+    return result
 
 
-def en_to_dz(text, repo):
+def en_to_dz(text, repo, limit=4, max_new=80):
     """Translate sentence by sentence, then clean each sentence (spaces, shad, wrong
     spellings, locative ལུ) so the joined result reads as proper Dzongkha."""
-    parts = [normalize(translate(s, repo, EN, DZ)) for s in split_sentences(text)]
+    parts = [normalize(translate(s, repo, EN, DZ, max_new)) for s in split_sentences(text, limit)]
     return normalize(" ".join(p for p in parts if p))
+
+
+# ------------------------------------------------------------------ God Mode
+def god_translate(text, repo):
+    """Pure translation (no question answering). Dzongkha -> English, anything else -> Dzongkha.
+    Returns (translation, direction) with direction 'dz2en' or 'en2dz'."""
+    text = text.strip()
+    if dzongkha_ratio(text) >= 0.5:
+        parts = split_dz_sentences(text) or [text]
+        out = [translate(p, DZ_TO_EN, DZ, EN, max_new=120) for p in parts]
+        return clean_en(" ".join(out)), "dz2en"
+    return en_to_dz(text, repo, limit=40, max_new=160), "en2dz"
+
+
+@st.cache_resource(show_spinner="First start: preparing Dzongkha answers (only happens once)...")
+def warm_up(repo):
+    """Load the translator and pre-translate every fact + the 'no data' reply, once.
+    After this, fact questions are answered instantly from the cache."""
+    for f in load_facts().items:
+        en_to_dz(f["answer_en"], repo)
+    return True
 
 
 # ---------------------------------------------------- verified bank + spell check
@@ -131,20 +274,72 @@ def load_bank_and_lexicon():
     return bank, lex
 
 
+@st.cache_resource
+def load_facts():
+    return FactBank("facts_en.json")
+
+
+@st.cache_resource
+def training_questions():
+    """English questions from your training data (used to decide when the fine-tuned LoRA model should answer)."""
+    qs = []
+    for f in ("data/dataset.json", "dzo_dataset_full.json"):
+        try:
+            for d in json.loads(Path(f).read_text(encoding="utf-8")):
+                if d.get("instruction"):
+                    qs.append(d["instruction"])
+        except Exception:
+            pass
+    return qs
+
+
+def in_training_data(text, threshold=0.6):
+    """True if the question is (nearly) one of the training questions."""
+    from dzongkha_nlp import _tok
+    qt = _tok(text.lower())
+    if not qt:
+        return False
+    for q in training_questions():
+        kt = _tok(q.lower())
+        if kt and len(qt & kt) / len(qt | kt) >= threshold:
+            return True
+    return False
+
+
 def pipeline_chat(en_history, user_text, dz_repo, max_tokens, temp):
     """Return (dz_reply, english_question, english_answer, source).
-    source is "verified" when the answer came from verified_kb.json."""
+    Order of trust:
+      1. verified_kb.json  -> word-for-word Dzongkha answer         (source "verified")
+      2. facts_en.json     -> English fact (no model guessing), translated to Dzongkha (source "machine")
+      3. anything else     -> the language model answers (source "general")
+    """
+    TIMES.clear()
     bank, _ = load_bank_and_lexicon()
     item, score = bank.lookup(user_text)
     if item:
         return item["dz_answer"], user_text, "(verified answer bank)", "verified"
-    if dzongkha_ratio(user_text) >= 0.5:
-        en_q = translate(user_text, DZ_TO_EN, DZ, EN)
+
+    en_q = translate(user_text, DZ_TO_EN, DZ, EN) if dzongkha_ratio(user_text) >= 0.5 else user_text
+
+    facts = load_facts().lookup(en_q)
+    if facts:
+        # Straight from your data - no language model involved, so it is fast and cannot invent anything.
+        en_a = " ".join(f["answer_en"] for f in facts)
     else:
-        en_q = user_text
-    en_history.append({"role": "user", "content": en_q})
-    en_a = clean_en(run_llm(load_base, EN_SYSTEM, en_history, max_tokens, temp))
-    en_history.append({"role": "assistant", "content": en_a})
+        # Not in your data -> let the language model answer any question (keeps the conversation going).
+        ctx = ""
+        if USE_WEB and not SKIP_WEB.match(en_q):
+            t0 = time.time()
+            ctx = web_context(en_q)
+            TIMES["web"] = time.time() - t0
+        system = EN_SYSTEM + "\nToday's date is " + time.strftime("%d %B %Y") + "."
+        if ctx:
+            system += ("\n\nWeb search results (newer than your memory - trust them over your memory, "
+                       "and answer only what the question asks):\n" + ctx)
+        en_history.append({"role": "user", "content": en_q})
+        en_a = clean_en(run_llm(load_base, system, en_history[-8:], min(max_tokens, 120), temp))
+        en_history.append({"role": "assistant", "content": en_a})
+        return en_to_dz(en_a, dz_repo), en_q, en_a, ("web" if ctx else "general")
     return en_to_dz(en_a, dz_repo), en_q, en_a, "machine"
 
 
@@ -236,6 +431,7 @@ SUGGESTIONS = [
     ("📅 Days of the week", "How do you say Tuesday in Dzongkha?"),
     ("🏔️ Tiger's Nest", "What is Paro Taktsang?"),
     ("🔢 Numbers", "How do you say 5 in Dzongkha?"),
+    ("🌐 God Mode (translate)", "/god"),
 ]
 
 st.set_page_config(page_title=APP_NAME, page_icon="🐉", layout="wide",
@@ -265,6 +461,20 @@ def bg_data_uri() -> str:
                            f"next to app.py (looked in: {Path(__file__).resolve().parent / 'assets'}).")
         return ""
     return "data:image/png;base64," + _read_b64(str(p), p.stat().st_mtime)
+
+
+# The Dzongkha frame corners are built into this file, so no extra image files are needed.
+FRAME_B64 = {
+    "tl": "iVBORw0KGgoAAAANSUhEUgAAAMUAAADFCAYAAADkODbwAAADaklEQVR4nO3dUW6cSBRA0fHIe5jNZPnZzKwi+R1dNU6jKfADzvmMpTa0uSmqGuiPn//8+PXXyX78+/Pj1b+v2JarvvYqV9jG6f7+7g2AaUQBIQoIUUCIAuJz6wdbqxh7rFrxeLUtR772qtff8x5u/b5V27fi77nX3n2aYvxIMf0NXMV+zjE+CjibKIbw4docooAYH8Wk/0G/Y1sm7f8KV9ifzdWnLa926ujJ06Q3csW27H2NSfu/wlH7s+o4HD9SwLtWxSYKCFFAiAJi90T7Oz6RvNvv3HvZypGXuRzpCp9ev2KkGO6qB9aVjY/iKQfFU/bzCsZHAWcTBYQoIDZXn66wunE3e+YV5iDHMVJAiAJCFBCigBgfhQk/Zxu1gjHpYc881/iRAs4mCghRQIgC4tFRmGTzysekJc8j70gTAO8aP1JsHcwOco4yPgo4myggRAHx5US75+1/mpS/c56/9zVWbZ85CO/ajGLP10rtPeBc48RkTp8gRAEhCghRQIx6xM2Kyzzg/xo/UrjMg7ONjwLOJgoIUUCMj2LS/R48w7dMVlcc6CbaHGX8SAFnEwWEKCBEASEKiPGPuIGzGSkgRAEhCghRQIyJwiSbKTbvvHOQ8lRjRgqYQhQQooAQBYQoIJZc+2SlijsxUkCIAkIUEKKAWPINRCba3MmukcLBzxM4fYIQBYQoIEQB8TnpETcwgZECQhQQooAQBYQoIDziBsJIASEKCFFAiAJCFBCbq09bXl0rZaWKOzFSQIgCQhQQooD48lmy/51Av3Mzkgk3d3Dol8uLhCty+gQhCghRQIgCYtdNRu+uVMGVLXnAsiC4E6dPEKKAEAWEKCBc5gFhpIAQBYQoIEQBIQoAAAAAgNNsXvvkuiWeyucUEKKAEAWEKCBEASEKCFFAiAJCFBCigBAFhCggRAEhCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCCWfLm8hzFzJ0YKCFFAiAJCFBCfX/2wE+gVk3KYbnOkeLWiZJWJJ3D6BCEKCFFAiAJCFBCigBAFhCggRAEhCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAkIUELuj8EQP7u7L5z5tEQZ35vQJQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKCFFA/AYgMPxVehtJSgAAAABJRU5ErkJggg==",
+    "tr": "iVBORw0KGgoAAAANSUhEUgAAAMUAAADFCAYAAADkODbwAAADaElEQVR4nO3dW07bQABAUaiyh26G5bMZVtF+VWpv4ygj/Bg753yiKDiGy2SGsfP++fPj1xtP+fj6fL/39ZnO4ZbHeNbnHvVj728IsxMFhCggRAEhCojb0qx/FkurD7Mf99vb+IrKyGs6w4rPveff8rlHLR3L9CPFGX751+B1zmP6KGBvopjETP8AfHWigJg+iqv9BT3i9cx0Dmc6liW3tZ7oDC92b6Pn5N7jRyemM/0cZvkDMHoOVxkpZvpBwHdN//YJ9iYKCFFArDLRPsN/KY8wus1h5DzOdM733p6y1rEsMVLsbKZfZu4TxSReJZYzvE5RQIgCQhQQq23zeGWj75PP8L56dluuYhkpIEQBIQoIUUCIgl2d4TIDqyD854hf3JlW5IwUEKKAEAWEKCBEwX9mmvQe4aVfPGNGbgw9eoXhTEu1Rgo2sTTanGEUEgWEKCBEATH9+zvmMTJ5Xuux9x4/emyj31MUPO0Me6JGbrB82o/3gr2JAkIUEKKAMNFmE2tt8zjik5yMFGzCNg+4EFFAiAJCFOxqpusmlkw/6eG81gjgiIm5kQJCFBCigBAFhCggrD4xhZmWao0UEKKAEAWEKCBEwRRmus5imgOBvbnFDTxJFBCigBAFhCggrD5xKe77BBsQBYQoIEQBcTv6AGAPI3urjBRc3uhmQ1FAiAJCFBCigLDNg0uxzQM2IAoIUUCIAkIUEFafeFlucQNPEgWEKCBEASEKCFfecSn3VpRcZATfJAoIUUCIAsI2Dy7hmYuL/p5wP3q8KDilLT+M3tsnCFFAiAJCFBAm2lzGo8n3va0eLjLi8pb2ONn7BN8kCghRQIgCwuoTp2SbB+xIFBCigBAFhCgAAAAAAHZj7xMvy5V38CRRQIgCQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKCFFAiAJCFBCigBAFhCggRAEhCghRQIgCQhQQbrDMpazxofNGCghRQIgCQhQQt6MPAPbw8fX5z6LSowm5kYLLaxBLX/tDFBCigBAFhCggRAEhCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKLu3RXTuWuMEyL2vp3k9GCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEAfEbIRHp0s88jxQAAAAASUVORK5CYII=",
+    "bl": "iVBORw0KGgoAAAANSUhEUgAAAMUAAADFCAYAAADkODbwAAADYklEQVR4nO3dUZKUSBRA0eqJ3sNsxuW7GVcx8+0NaCsNin4F53waSlBat5NMIfn4+e+P/x4bfvz6+bH163B1/3z3CcA0ooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKCFFAiALi82/+UB9M8kASV7I8Uuw9qQdX4fIJQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKCFFAiAJCFBCigBAFhCggdqPY2rXDTh7cwZf7PomAO3L5BCEKCFFAiAJid6Jt02TuykgBIQoIUUCIAkIUEKKAEAWEKCBEASEKCFFAiAJCFBCigBAFhCggRAEhCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAgAAAADgNB+vfFe2V4Txjvw/BYQoIEQBIQoIUUAsv1x+a7XKKhNXYqSAEAWEKCBEAbEUxd4tIa+8VQTO5t4nCJdPEKKAEAWEKCB2b/N4PH6fKD8zITex5gp2V5/c+8RduXyCEAWEKCBEAfHl6tMWk2quzkgBIQoIUUCIAkIUEIc8ZGRFiisxUkCIAkIUEKKAEAXE8qqRh4y4OiMFhCggRAEhCohDNliGK/n0RYffuXyCEAWEKCBEAbH8Hm24OiMFhCggRAEhCghRQLz0PdorrHYxxZiRYkqcMCYKmEIUEKKAEAXEt6z42NSZyYwUEKKAEAWEKCBEAXHIFjdHrQRtHcftH5xt/Ehh6ZWzjY8CziYKCFFAjI9ib6JtAs6rLO/79Mov4+qxV36/CTvPGj9SwNlEASEKCFFAfLnFTSenf5rYPjOZXT3GUednos2zxuz79HisrXitro6Jgme5fIIQBYQoIMZH4TYPzjZq8nn2F93kmy3jR4pXMtqw5dZRwBZRQIgCQhQQh2xxs2p11eeIVSKTap41fqSwbMrZxkcBZxMFhCggRAGxvMXNCis+azxMNYORAkIUEKKAGB/FXeYld/mc72B8FHcnlvPtrj7tWVkhOcp3bKT8yteevXIj6Une4b66LUYKCFFAiAJCFFzGUfPJ5Yn2d9xGMOn92kecy+oxJn3+I0y/FWX8SDHpL3DKD4R39g6fZ3wUcDZRDPEOP0HvQhQQ46N45wnlCp9zjt3Vp0knP+nd3Wcf+6jzu8u/5xHGjxRwNlFAiAJCFBCigPgf1Kn03HMEtMEAAAAASUVORK5CYII=",
+    "br": "iVBORw0KGgoAAAANSUhEUgAAAMUAAADFCAYAAADkODbwAAADYElEQVR4nO3dQXKbMABA0aSTO/QyOX4uk1O0284PeKAjbAHvLTseB7v+kaUIeH+Dm/r6/fln6d9/PftAYHaigBAFhCggRAEhCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAuLj1QcAI/XEoc/vr/e9z2Gk4NLWzq57RBQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKCFFAiAJCFBCigBAFhCggRAEhCi5v6Yoej67ysfuaODCz/7mkTRkpIEQBIQoIUUCYaHNba5NyIwWEKCBEASEKCFFAiAJCFBCigBAFhCggRAEhCghRQIgCQhQQooAQBYQoIEQBIQoIUUCIAkIUEKKAEAWEKCBEASEKAAAAAICncXsvTmnE/bLX+DsFhCggRAEhCghRQFh94lKWVqU+v78WP+duLg8biQJCFBCigBAFl7E2cd67JcTqE6dk7xM8kSggRAEhCggTbS5hy8T73+0ejx4vCi7F3ic4gCggRAEhCggTbW7LRBs2EgWEKCBEASEKCKtPXMqIk4+MFBCigBAFhCggRAHx8eoDgKOtnWS0xkgBIQoIUUCIAkIUXJ4LLHNr9j7BAUQBIQoIUUCYaHNbLnEDG4kCQhQQooAQBYTVJ6Zx5L2x9zBSMIVZgnh7EwX8IAoIUUCIAsLqE4cZMXnee3maEYwUEKKAEAWEKCBEAeECyzzd0orSqG0eLnHD6bxiiXUvUUCIAkIUEKLgEGsT3pnOm1hj9YnNZloh2mNtcu+6T7CRKCBEASEKiOn/usg8Hk2QO5kd9dilx+89tr0/UxRstvZB2rO6s3cl6BV8fYIQBYQoIETBIc68zcNEm0WzbMV4BSMFP5zht/mRRAEhCghRQIgCwklGbDZihWjvJP4Vk34jBU8109LrGlFAiAJCFBCigLD6NMCRJ9+w7MiVMCMFhCggRAEhikncZbv2GV6nKJ7sDB+Kuxuy+vSK/+gzrNaM2Odz5CVhRr2HM4U+YmXPSAEhCghRQAyJ4gzf72GrYds8jgpjpkncXnvvFz3iPTzyHtVnOJYR7+H0X5+uNgq94vXM9B7OdCxrpo8Cnk0UkzjDb9C7EAXE9FGceaK9h9c5j48zHOSSM2wtmf1yLkf/vCOf/8jnnn6kgGcTBYQoIEQBIQqIvxuG4GwLOIU1AAAAAElFTkSuQmCC",
+}
+
+
+def frame_uris() -> dict:
+    """Corner pieces of the Dzongkha frame as data URIs."""
+    return {k: "data:image/png;base64," + v for k, v in FRAME_B64.items()}
 
 
 CSS = """
@@ -357,9 +567,13 @@ div[data-testid="stButton"] > button[kind="primary"]:hover { box-shadow:0 3px 18
 
 /* sidebar */
 section[data-testid="stSidebar"] { background:rgba(255,245,220,.96); border-right:2px solid var(--line); }
-.brand { margin:4px 0 16px; }
-.brand .t { font-family:'Sora',sans-serif; font-weight:700; font-size:1.1rem; color:var(--red-dark); line-height:1.15; }
-.brand .s { font-size:.78rem; color:var(--red); margin-top:2px; }
+.brand { margin:4px 0 18px; position:relative; text-align:center; padding:30px 18px; min-height:92px; box-sizing:border-box;
+         border-radius:6px; background-color:rgba(255,250,236,.88);
+         background-image:url("__TL__"), url("__TR__"), url("__BL__"), url("__BR__");
+         background-position:top left, top right, bottom left, bottom right;
+         background-size:56px 56px; background-repeat:no-repeat; }
+.brand .t { font-family:'Sora',sans-serif; font-weight:700; font-size:1.25rem; color:var(--red-dark); line-height:1.15; }
+.brand .s { font-size:.8rem; color:var(--red); margin-top:3px; }
 .side-label { font-size:.78rem; color:var(--muted); margin:14px 0 4px; font-weight:600; }
 
 /* expanders */
@@ -414,6 +628,9 @@ section[data-testid="stSidebar"] { background:rgba(255,245,220,.96); border-righ
 @media (prefers-reduced-motion: reduce){ * { transition:none !important; } }
 </style>
 """.replace("__BG__", bg_data_uri())
+_f = frame_uris()
+for _k, _v in _f.items():
+    CSS = CSS.replace(f"__{_k.upper()}__", _v)
 st.markdown(CSS, unsafe_allow_html=True)
 
 
@@ -467,6 +684,18 @@ def render_assistant(content, source=None, notes=None, debug=None):
     st.markdown(dz_html(content) if TIBETAN.search(content) else content, unsafe_allow_html=True)
     if source == "verified":
         st.markdown('<span class="badge ok">✔ Verified answer</span>', unsafe_allow_html=True)
+    elif source == "web":
+        st.markdown('<span class="badge ok">🌐 Answer from web search · translated automatically</span>',
+                    unsafe_allow_html=True)
+    elif source == "general":
+        st.markdown('<span class="badge warn">ℹ General AI answer · translated automatically, facts may be wrong</span>',
+                    unsafe_allow_html=True)
+    elif source == "god_en2dz":
+        st.markdown('<span class="badge warn">🌐 God Mode · English → Dzongkha · machine translated</span>',
+                    unsafe_allow_html=True)
+    elif source == "god_dz2en":
+        st.markdown('<span class="badge warn">🌐 God Mode · Dzongkha → English · machine translated</span>',
+                    unsafe_allow_html=True)
     elif source == "machine":
         st.markdown('<span class="badge warn">⚠ Machine translated · please double-check spelling</span>',
                     unsafe_allow_html=True)
@@ -498,7 +727,7 @@ def get_prompt(placeholder):
 def welcome():
     st.markdown(
         '<div class="welcome"><h2>How can I help you today?</h2>'
-        '<p>Ask in English or Dzongkha. Try one of these:</p></div>', unsafe_allow_html=True)
+        '<p>Ask in English or Dzongkha. Type <b>/god</b> to switch to translate-only God Mode. Try one of these:</p></div>', unsafe_allow_html=True)
     cols = st.columns(2)
     for i, (label, prompt) in enumerate(SUGGESTIONS):
         if cols[i % 2].button(label, key=f"sg{i}"):
@@ -584,10 +813,103 @@ def delete_session(sid):
             st.session_state.pop(k)
 
 
+# ----------------------------------------------------------------- God Mode UI
+def handle_god(q, hist_key, kind):
+    """Handle '/god' commands and, while God Mode is on, translate every message.
+    Returns True if the message was handled here (so the normal chat is skipped)."""
+    cmd = parse_god_command(q)
+    on = st.session_state.get("god_toggle", False)
+    if cmd is None and not on:
+        return False
+    if cmd is not None and cmd[0] != "translate":
+        # The sidebar toggle is already drawn, so flip it on the next run (before it is created).
+        st.session_state["_god_set"] = {"on": True, "off": False, "toggle": not on}[cmd[0]]
+        st.rerun()
+    text = cmd[1] if cmd else q
+    st.session_state[hist_key].append({"role": "user", "content": q})
+    with st.chat_message("user", avatar=USER_AVATAR):
+        st.write(q)
+    with st.chat_message("assistant", avatar=BOT_AVATAR):
+        with st.spinner("Translating…"):
+            try:
+                out, direction = god_translate(text, DZ_REPO)
+            except Exception as e:
+                st.error(f"Translation failed: {e}")
+                st.session_state[hist_key].pop()
+                return True
+        notes = []
+        if direction == "en2dz":
+            out, notes = check_notes(out, load_bank_and_lexicon()[1])
+        render_assistant(out, "god_" + direction, notes)
+    st.session_state[hist_key].append({"role": "assistant", "content": out,
+                                       "source": "god_" + direction, "notes": notes})
+    save_current(kind)
+    return True
+
+
 # -------------------------------------------------------------------- state
-for key, default in [("hist_pipe", []), ("en_hist", []), ("hist_ft", [])]:
+st.session_state.setdefault("god_toggle", False)
+if "_god_set" in st.session_state:          # set by a /god command on the previous run
+    st.session_state["god_toggle"] = st.session_state.pop("_god_set")
+    st.toast("🌐 God Mode ON: everything you type is translated." if st.session_state["god_toggle"]
+             else "God Mode OFF: back to normal chat.")
+for key, default in [("hist_pipe", []), ("en_hist", []), ("hist_ft", []), ("en_hist_ft", [])]:
     st.session_state.setdefault(key, default)
 st.session_state.setdefault("sum_text", "")
+
+# ------------------------------------------------------------ welcome splash
+# Shown once when the page opens. Needs welcome_bg.jpg next to this file (or in ./assets).
+def _find_welcome_bg():
+    here = Path(__file__).resolve().parent
+    for p in (here / "welcome_bg.jpg", here / "assets" / "welcome_bg.jpg",
+              Path.cwd() / "welcome_bg.jpg", Path.cwd() / "assets" / "welcome_bg.jpg"):
+        if p.exists():
+            return p
+    return None
+
+
+SPLASH_CSS = """
+<style>
+.stApp, .stApp:has([data-testid="stExpandSidebarButton"]), .stApp:has(section[data-testid="stSidebar"]) {
+  background:
+    linear-gradient(to top, rgba(255,245,220,.94) 0%, rgba(255,245,220,.80) 24%, rgba(255,245,220,0) 52%) fixed,
+    url("__IMG__") center / cover no-repeat fixed !important;
+}
+.stApp section[data-testid="stSidebar"], .stApp [data-testid="stExpandSidebarButton"],
+.stApp [data-testid="stSidebarCollapsedControl"], .stApp header[data-testid="stHeader"] { display:none !important; }
+.stApp .block-container, .stApp [data-testid="stMainBlockContainer"] {
+  width:100% !important; max-width:760px !important; margin:0 auto !important;
+  min-height:100vh; display:flex; flex-direction:column; justify-content:flex-end;
+  padding:0 1.2rem 7vh !important; text-align:center; }
+.splash { animation:spin .9s ease both; }
+.splash .tib { font-family:'Noto Serif Tibetan',serif; font-size:1.15rem; color:var(--red); margin-bottom:6px; }
+.splash h1 { font-family:'Sora',sans-serif; font-weight:700; letter-spacing:-.02em; line-height:1.15;
+             font-size:clamp(1.8rem,4.6vw,3.1rem); color:var(--ink); margin:0 0 8px; }
+.splash h1 span { color:var(--red-dark); }
+.splash p { color:var(--muted); font-size:1.02rem; margin:0 0 20px; }
+.stApp [data-testid="stButton"] { max-width:280px; margin:0 auto !important; }
+@keyframes spin { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){ .splash { animation:none; } }
+</style>
+"""
+
+if not st.session_state.get("entered"):
+    _bg = _find_welcome_bg()
+    if _bg is None:
+        st.warning("welcome_bg.jpg not found. Put it next to the app file (or in an 'assets' folder).")
+        _uri = ""
+    else:
+        _uri = "data:image/jpeg;base64," + _read_b64(str(_bg), _bg.stat().st_mtime)
+    st.markdown(SPLASH_CSS.replace("__IMG__", _uri), unsafe_allow_html=True)
+    st.markdown(
+        '<div class="splash"><div class="tib">འབྲུག་རྒྱལ་ཁབ་ཀྱི་རྒྱལ་ཡོངས་སྐད་ཡིག</div>'
+        '<h1>Welcome to <span>Dzongkha AI Assistant</span></h1>'
+        '<p>Ask in English or Dzongkha. Answers come back in Dzongkha.</p></div>',
+        unsafe_allow_html=True)
+    if st.button("Get started  →", type="primary", key="enter"):
+        st.session_state["entered"] = True
+        st.rerun()
+    st.stop()
 
 # ------------------------------------------------------------------ sidebar
 with st.sidebar:
@@ -596,8 +918,12 @@ with st.sidebar:
     st.markdown('<div class="side-label">Mode</div>', unsafe_allow_html=True)
     mode = MODES[st.radio("Mode", list(MODES), label_visibility="collapsed", key="mode_radio")]
 
+    st.toggle("🌐  God Mode (translate only)", key="god_toggle",
+              help="English → Dzongkha and Dzongkha → English. Same as typing /god in the chat.")
+
     if st.button("🗑️  New chat"):
         st.session_state.hist_pipe, st.session_state.en_hist, st.session_state.hist_ft = [], [], []
+        st.session_state.en_hist_ft = []
         st.session_state.pop("pending", None)
         st.session_state.pop("chat_id_pipe", None)
         st.session_state.pop("chat_id_ft", None)
@@ -606,16 +932,19 @@ with st.sidebar:
     hist_slot = st.container()   # filled at the bottom of the script so it is always up to date
 
     st.markdown('<div class="side-label">About</div>', unsafe_allow_html=True)
-    st.caption("✔ Verified = answer from the hand-checked answer bank.\n\n"
+    st.caption("🌐 God Mode: type /god (or use the switch) to translate instead of chat. "
+               "/god off turns it off; /god <text> translates one message.\n\n"
+               "✔ Verified = answer from the hand-checked answer bank.\n\n"
                "⚠ Machine translated = cleaned and spell-checked automatically, but not guaranteed.")
 
 # --------------------------------------------------------------------- modes
 if mode == "Chat (translate pipeline)":
+    warm_up(DZ_REPO)
     chat_header()
     if not st.session_state.hist_pipe:
         welcome()
     render_history("hist_pipe")
-    if q := get_prompt("Message the assistant (English or Dzongkha)…"):
+    if (q := get_prompt("Message the assistant, or type /god to translate…")) and not handle_god(q, "hist_pipe", "pipe"):
         st.session_state.hist_pipe.append({"role": "user", "content": q})
         with st.chat_message("user", avatar=USER_AVATAR):
             st.write(q)
@@ -630,28 +959,47 @@ if mode == "Chat (translate pipeline)":
             if source != "verified":
                 dz, notes = check_notes(dz, load_bank_and_lexicon()[1])
             render_assistant(dz, source, notes, (en_q, en_a))
+            if TIMES:
+                st.caption("⏱ " + " · ".join(f"{k} {v:.1f}s" for k, v in TIMES.items())
+                           + (" · engine: Ollama" if ollama_ready() else " · engine: MLX"))
         st.session_state.hist_pipe.append({"role": "assistant", "content": dz, "source": source,
                                            "notes": notes, "debug": (en_q, en_a)})
         save_current("pipe")
 
 elif mode == "Chat (fine-tuned)":
+    warm_up(DZ_REPO)
     chat_header()
-    st.info("This is your fine-tuned LoRA model. It only knows what is in your training data.", icon="🎓")
     if not st.session_state.hist_ft:
         welcome()
     render_history("hist_ft")
-    if q := get_prompt("Message the fine-tuned model…"):
+    if (q := get_prompt("Message the assistant, or type /god to translate…")) and not handle_god(q, "hist_ft", "ft"):
         st.session_state.hist_ft.append({"role": "user", "content": q})
         with st.chat_message("user", avatar=USER_AVATAR):
             st.write(q)
         with st.chat_message("assistant", avatar=BOT_AVATAR):
             with st.spinner("Thinking…"):
-                reply, ok = dzongkha_only(SYSTEM, st.session_state.hist_ft, MAX_TOKENS, TEMPERATURE)
-            reply, notes = check_notes(reply, load_bank_and_lexicon()[1])
-            if not ok:
-                notes.insert(0, "The model did not produce clean Dzongkha.")
-            render_assistant(reply, "machine", notes)
-        st.session_state.hist_ft.append({"role": "assistant", "content": reply, "source": "machine", "notes": notes})
+                try:
+                    # Questions covered by your training data -> your fine-tuned LoRA model.
+                    # Everything else -> the full pipeline (verified answers, facts, live web, general AI).
+                    if in_training_data(q) and Path(ADAPTER_PATH).exists():
+                        reply, ok = dzongkha_only(SYSTEM, [{"role": "user", "content": q}], MAX_TOKENS, TEMPERATURE)
+                        source, debug = "machine", None
+                        if not ok:
+                            raise RuntimeError("LoRA reply was not clean Dzongkha")
+                    else:
+                        raise RuntimeError("not in training data")
+                except Exception:
+                    TIMES.clear()
+                    reply, en_q, en_a, source = pipeline_chat(st.session_state.en_hist_ft, q, DZ_REPO, MAX_TOKENS, TEMPERATURE)
+                    debug = (en_q, en_a)
+            notes = []
+            if source != "verified":
+                reply, notes = check_notes(reply, load_bank_and_lexicon()[1])
+            render_assistant(reply, source, notes, debug)
+            if TIMES:
+                st.caption("⏱ " + " · ".join(f"{k} {v:.1f}s" for k, v in TIMES.items()))
+        st.session_state.hist_ft.append({"role": "assistant", "content": reply, "source": source,
+                                         "notes": notes, "debug": debug})
         save_current("ft")
 
 elif mode == "Summarize":
