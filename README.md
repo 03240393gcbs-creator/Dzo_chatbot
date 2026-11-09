@@ -1,65 +1,67 @@
-# Dzo_chatbot
+Dzongkha AI Assistant 
+A bilingual English–Dzongkha AI assistant built with Streamlit. The project combines a local AI chat workflow, Dzongkha language processing, optional live web retrieval, and document summarisation and translation in a Bhutanese-inspired interface.
+Project status: Active development. AI-generated facts and machine translations require checking; free web search is best-effort and may fail or return incomplete results.
 
-English/Dzongkha chatbot (NLP module assignment).
+Features
+- AI Chat: Ask questions in English or Dzongkha, with an English-to-Dzongkha response pipeline.
+- Fine-tuned chat mode: Separate mode for a configured Dzongkha-capable model (requires compatible local model files).
+- Live web retrieval: Attempts to fetch recent information for time-sensitive questions and displays source links when available. Sources are search excerpts, not independently verified facts.
+- Document Studio: Upload text-based PDF, DOCX, TXT, or Markdown files to summarise or translate content between English and Dzongkha.
+- Summarisation and next-word prediction: Dedicated tools accessible from the sidebar.
+- Dzongkha text processing: Normalisation, spelling checks and sentence-structure warnings through dzongkha_nlp.py.
+- Chat history: Local conversation management.
+- Responsive UI: Bhutanese-inspired design with a welcome screen and traditional background artwork.
+Requirements
+- Python 3.10+ recommended
+- macOS for the current MLX-based local inference setup; model support depends on your hardware and configuration
+- Internet access for optional live search and any externally downloaded models
+Setup
+Clone the repository:
+git clone https://github.com/03240393gcbs-creator/Dzo_chatbot.git
+cd Dzo_chatbot
+Create and activate a virtual environment (macOS):
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install ddgs certifi pypdf python-docx
+The final command adds packages used by the latest web-search and document-upload features. Model dependencies and any local model paths must also be configured as required by your installation.
 
-## Run
-    pip install -r requirements.txt
-    python fix_dataset.py          # clean data, rebuild data/mlx and data/lexicon.txt
-    python -m pytest -q            # tests for the Dzongkha tools
-    streamlit run app.py
+Run the latest interface:
+python -m streamlit run dzongkha_app_v3.py
+Open the local URL printed in Terminal (usually http://localhost:8501). The repository also contains an older app.py entry point; use dzongkha_app_v3.py for the latest interface.
+Using Document Studio
+1. Open Summarise from the sidebar.
+2. Upload a PDF, Word, TXT or Markdown file, or paste text.
+3. Select Summarise or Translate.
+4. Choose the available translation direction and generate your result.
+5. Review the output and download it when offered.
+Limits: Uploads are limited to 12 MB, and only the first 24,000 extracted characters are processed. Scanned/image-only PDFs are not supported without OCR. Long documents and translations may take time on local hardware.
+Live information and reliability
+The assistant attempts web retrieval for changing facts, such as current officeholders or news. If reliable sources cannot be retrieved, it should say that it cannot verify the current answer rather than guess. Search results can be stale or incorrect, so check linked primary sources for important claims. Local verified knowledge-bank entries may be used for non-current questions.
+Main project files
+File	Purpose
+dzongkha_app_v3.py	Current Streamlit application
+dzongkha_nlp.py	Dzongkha normalisation and language checks
+verified_kb.json	Hand-checked answers for supported questions
+requirements.txt	Base Python dependencies
+welcome_bg.jpg	Welcome screen image (add to project root if needed)
+app.py, dzongkha_app_v2.py	Earlier application versions
+data/	Supporting language resources
 
-## How Dzongkha quality is controlled
-1. **verified_kb.json** - hand-checked question -> Dzongkha answers. Matches are returned word for word.
-2. **dzongkha_nlp.py** - every other reply is cleaned: no spaces between syllables, one shad, wrong
-<<<<<<< HEAD
-   spellings fixed (ཡིན→ཨིན, གཉིས→གཉིས ...), locative ལུ rule, digits to ༠-༩, foreign characters removed.
-=======
-   spellings fixed (ཡིན→ཨིན, ཉིས→གཉིས ...), locative ལུ rule, digits to ༠-༩, foreign characters removed.
->>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
-3. **Checks shown in the app** - malformed syllables, syllables missing from the word list (with suggestions),
-   and verb-final (SOV) sentence-structure warnings.
-4. Add real Dzongkha text (one sentence per line) to `data/extra_corpus.txt` to grow the spell-check word list.
 
-## Data note
-Zenodo 6271560 is the *Dzongkha Handwritten Digit Dataset* (images of ༠-༩). It is not a text corpus, so it is
-used here only for the digit mapping. Cite it (CC-BY 4.0) if you use it.
-<<<<<<< HEAD
-
-
-## GovTech Dzongkha NLP resources
-
-The official GovTech site describes a hosted Dzongkha-English NLLB translation
-model fine-tuned on approximately 700,000 DCDD-provided parallel sentences:
-https://dnlp.tech.gov.bt/about
-
-**Important:** the public About page documents the model and corpus size, but it
-does not provide a public corpus download or a documented API endpoint. This
-repository does not scrape the service or include the DCDD corpus. Request the
-dataset/API access and usage permission from GovTech/DCDD before using it.
-
-This project adds the public `dzoseg` tokenizer (trained on a separate Dzongkha
-web/literary corpus) for optional segmentation and text diagnostics. It is not
-the DCDD 700K dataset and is not a replacement for the GovTech translation model.
-
-### Prepare an authorised parallel corpus
-
-If GovTech/DCDD provides you a corpus file, place it in `data/` and run:
-
-```bash
-python prepare_govtech_corpus.py --input data/your_authorised_corpus.csv \
-  --english-column english --dzongkha-column dzongkha
-```
-
-Supported inputs: CSV, TSV, JSON, JSONL and XLSX. The converter validates that
-the target side contains Tibetan-script Dzongkha and removes exact duplicates.
-For model fine-tuning, the generated JSONL can be passed to the existing trainer for a data check:
-
-```bash
-python train_en2dz.py --jsonl data/govtech_parallel.jsonl --dry-run
-```
-
-Training the 600M NLLB model is resource-intensive; use a suitable GPU runtime
-and review licensing/permission before training or redistributing any corpus.
-\n\nSee [CST_RESOURCE_NOTES.md](CST_RESOURCE_NOTES.md) for what is publicly available from CST and how to import an authorised corpus. The verified phrase bank now returns `ཀུ་ཟུ་ཟང་པོ་ལ།` for Hello and `བཀའ་དྲིན་ཆེ།` for Thank you.\n
-=======
->>>>>>> fb291c61662ad18b00bfd8f77ec20227325c5c24
+Testing
+If the project's test dependencies are installed:
+python -m pytest -q
+Privacy and security
+Do not commit API keys, credentials, private chat histories, uploaded personal documents, .venv/, model weights or local caches. Check .gitignore before pushing. Uploaded content and search queries may be handled differently depending on the configured models and search providers.
+Known limitations
+- Machine-generated Dzongkha may contain spelling or grammatical errors.
+- Free search providers may rate-limit or block requests.
+- Web source links are not proof of independent fact verification.
+- Document extraction supports text-based files, not scanned PDFs.
+- MLX inference and translation speed depend on local hardware and models.
+Repository
+03240393gcbs-creator/Dzo_chatbot
+Acknowledgements
+Developed as a Dzongkha NLP/chatbot project to explore AI-assisted communication in Bhutan's national language.
